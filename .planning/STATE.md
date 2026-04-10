@@ -2,38 +2,38 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 0 context gathered (discuss mode)
-last_updated: "2026-04-10T17:26:23.909Z"
-last_activity: 2026-04-10 — Project fully initialized; CLAUDE.md generated; ready to plan Phase 0
+status: executing
+stopped_at: Phase 0 complete — ready to plan Phase 1
+last_updated: "2026-04-10"
+last_activity: 2026-04-10 — Phase 0 complete; references/outlook-ui.md produced with 77 confirmed-live annotations
 progress:
   total_phases: 6
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
+  percent: 17
 ---
 
 # Project State
 
 **Last updated:** 2026-04-10
-**Status:** Initialized — Ready to Plan Phase 0
+**Status:** Phase 0 Complete — Ready to Plan Phase 1
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-04-10)
 
 **Core value:** A personal assistant Claude Code instance can reliably read and search the user's Outlook inbox without ever sending, deleting, or mutating anything.
-**Current focus:** Phase 0 — Accessibility Research (pre-code selector capture)
+**Current focus:** Phase 1 — Auth Scaffold + CLI Skeleton
 
 ## Current Position
 
-Phase: 0 of 6 (Accessibility Research)
+Phase: 1 of 6 (Auth Scaffold + CLI Skeleton)
 Plan: 0 of ? in current phase
-Status: Ready to plan
-Last activity: 2026-04-10 — Project fully initialized; CLAUDE.md generated; ready to plan Phase 0
+Status: Ready to plan Phase 1
+Last activity: 2026-04-10 — Phase 0 complete; references/outlook-ui.md produced with 77 confirmed-live annotations
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 17%
 
 ## Performance Metrics
 
@@ -70,10 +70,12 @@ None captured.
 ### Blockers/Concerns
 
 - **Primary risk:** Microsoft's bot detection — Phase 1 must validate `--headed` + `--session-name` against a real Outlook session before any feature work begins. Treat all mitigations as hypotheses until tested.
-- **Focused Inbox ambiguity:** Phase 0 must determine whether digest needs to navigate away from "Focused" tab; a `click` action may be required, which is not in the standard action policy allowlist.
+- **Focused Inbox:** Confirmed ABSENT on this account. Phase 4 must still be defensive — detect `button "Focused"` presence before navigation.
+- **Attachment ARIA unresolved:** `has:attachment` search works but the opened message had only inline images. File download attachment ARIA structure needs a separate capture in Phase 3.
+- **Evidence section contains personal data (CR-01):** `references/outlook-ui.md` Evidence section contains real colleague names, email addresses, and financial/health correspondence metadata. Consider scrubbing before sharing the repo.
 
 ## Session Continuity
 
-Last session: 2026-04-10T17:26:23.904Z
-Stopped at: Phase 0 context gathered (discuss mode)
-Resume file: .planning/phases/00-accessibility-research/00-CONTEXT.md
+Last session: 2026-04-10
+Stopped at: Phase 0 complete — accessibility reference document produced
+Resume file: references/outlook-ui.md
