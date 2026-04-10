@@ -62,7 +62,7 @@ Plans:
   5. A query that returns zero results returns `{"status":"ok","results":[],"count":0}` — not an error
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Search implementation: policy-search.json, lib/run.js updates, lib/search.js with combobox workflow, accessible name parser, eval ID extraction, scroll-accumulate
+- [x] 02-01-PLAN.md — Search implementation: policy-search.json, lib/run.js updates, lib/search.js with combobox workflow, accessible name parser, eval ID extraction, scroll-accumulate
 - [ ] 02-02-PLAN.md — Human checkpoint: live search verification against real Outlook instance
 
 ### Phase 3: Read Operation
