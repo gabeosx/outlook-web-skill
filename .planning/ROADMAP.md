@@ -60,8 +60,10 @@ Plans:
   3. Running with `--limit 5` returns no more than 5 results; running without `--limit` returns up to the 20-item default
   4. When Outlook renders more than 20 results, the skill scrolls the message list and accumulates additional rows until the limit is reached
   5. A query that returns zero results returns `{"status":"ok","results":[],"count":0}` — not an error
-**Plans**: TBD
-**UI hint**: yes
+**Plans:** 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — Search implementation: policy-search.json, lib/run.js updates, lib/search.js with combobox workflow, accessible name parser, eval ID extraction, scroll-accumulate
+- [ ] 02-02-PLAN.md — Human checkpoint: live search verification against real Outlook instance
 
 ### Phase 3: Read Operation
 **Goal**: Users can retrieve the full text content, metadata, and attachment names of a specific email identified by an ID from a prior search result
@@ -108,7 +110,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 0. Accessibility Research | 0/1 | Planned | - |
 | 1. Auth Scaffold + CLI Skeleton | 0/3 | Not started | - |
-| 2. Search Operation | 0/? | Not started | - |
+| 2. Search Operation | 0/2 | Not started | - |
 | 3. Read Operation | 0/? | Not started | - |
 | 4. Daily Digest Operation | 0/? | Not started | - |
 | 5. Skill Packaging | 0/? | Not started | - |
