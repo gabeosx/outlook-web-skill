@@ -1,41 +1,45 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-10T16:41:53.283Z",
+  "timestamp": "2026-04-10T17:18:06.152Z",
   "phase": null,
   "phase_name": null,
   "phase_dir": null,
   "plan": null,
-  "task": null,
-  "total_tasks": null,
+  "task": 11,
+  "total_tasks": 11,
   "status": "paused",
   "workflow": "gsd-new-project",
-  "workflow_step": "requirements_approval",
+  "workflow_step": "roadmap_approved_pending_commit",
   "completed_tasks": [
     {"id": 1, "name": "Deep questioning (user interview)", "status": "done"},
     {"id": 2, "name": "Write PROJECT.md", "status": "done", "commit": "fb371b1"},
     {"id": 3, "name": "Workflow preferences + config.json", "status": "done", "commit": "a838368"},
     {"id": 4, "name": "Research: 4 parallel researchers (STACK, FEATURES, ARCHITECTURE, PITFALLS)", "status": "done"},
-    {"id": 5, "name": "Research: synthesizer → SUMMARY.md (all committed)", "status": "done"},
-    {"id": 6, "name": "Write REQUIREMENTS.md (28 v1 requirements)", "status": "done"}
+    {"id": 5, "name": "Research: synthesizer → SUMMARY.md", "status": "done", "commit": "b05df6a"},
+    {"id": 6, "name": "Write REQUIREMENTS.md (34 v1 requirements)", "status": "done"},
+    {"id": 7, "name": "Requirements approval from user", "status": "done"},
+    {"id": 8, "name": "Commit REQUIREMENTS.md", "status": "done", "commit": "7e93a9f"},
+    {"id": 9, "name": "Create roadmap (gsd-roadmapper agent)", "status": "done"},
+    {"id": 10, "name": "Roadmap approval from user", "status": "done"}
   ],
   "remaining_tasks": [
-    {"id": 7, "name": "Get requirements approval from user", "status": "not_started"},
-    {"id": 8, "name": "Commit REQUIREMENTS.md", "status": "not_started"},
-    {"id": 9, "name": "Create roadmap (gsd-roadmapper agent)", "status": "not_started"},
-    {"id": 10, "name": "Get roadmap approval from user", "status": "not_started"},
-    {"id": 11, "name": "Commit roadmap + STATE.md + generate CLAUDE.md", "status": "not_started"}
+    {"id": 11, "name": "Commit ROADMAP.md + STATE.md + generate CLAUDE.md", "status": "not_started"}
   ],
   "blockers": [],
   "human_actions_pending": [],
   "decisions": [
-    {"decision": "Browser automation (agent-browser) over Microsoft Graph API", "rationale": "User preference; avoids Azure app registration", "phase": "init"},
-    {"decision": "Configurable Outlook URL (not hardcoded)", "rationale": "User's company uses custom domain (e.g. mail.example.com)", "phase": "init"},
-    {"decision": "M365/work accounts only (v1)", "rationale": "User's use case is work email; personal account support deferred to v2", "phase": "init"},
-    {"decision": "Strictly read-only enforced at browser layer (Action Policy)", "rationale": "Hard safety constraint — non-negotiable", "phase": "init"},
-    {"decision": "Single outlook.js entry point with subcommands", "rationale": "Auth check is shared infrastructure; splitting would mean 3x session checks", "phase": "init"},
-    {"decision": "JSON to stdout with standard envelope", "rationale": "Personal assistant Claude Code instance parses it directly", "phase": "init"}
+    {"decision": "Browser automation over Microsoft Graph API", "rationale": "User preference; avoids Azure app registration", "phase": "init"},
+    {"decision": "Configurable Outlook URL (CFG-01)", "rationale": "User's company uses custom domain (mail.example.com)", "phase": "init"},
+    {"decision": "M365/work accounts only in v1", "rationale": "Personal account support deferred to v2", "phase": "init"},
+    {"decision": "Strictly read-only enforced at browser layer (Action Policy)", "rationale": "Hard safety constraint — non-negotiable; unlabeled destructive elements exist in Outlook that cannot be identified by accessible name", "phase": "init"},
+    {"decision": "Single outlook.js entry point with subcommands", "rationale": "Auth check is shared infrastructure; splitting would require 3x session checks", "phase": "init"},
+    {"decision": "Real Chrome/Edge executable required (CFG-03/04)", "rationale": "agent-browser default 'Chrome for Testing' is blocked by Entra Conditional Access on managed devices; must use OUTLOOK_BROWSER_PATH + OUTLOOK_BROWSER_PROFILE", "phase": "init"},
+    {"decision": "Action Policy set before browser launch (SAFE-01)", "rationale": "Clicking unlabeled generic elements without policy caused email deletion during research session", "phase": "init"},
+    {"decision": "Phase 0 is exploration-only (no code)", "rationale": "Implementation depends on verified data-automationid selectors from live Outlook snapshots", "phase": "init"},
+    {"decision": "6-phase roadmap (0 through 5)", "rationale": "Phase 0 is mandatory pre-code gate; phases map cleanly to delivery boundaries", "phase": "init"},
+    {"decision": "skill must use data-automationid selectors not refs", "rationale": "Refs are ephemeral and re-number after DOM changes; data-automationid values are stable and named", "phase": "init"}
   ],
-  "uncommitted_files": [".planning/REQUIREMENTS.md"],
-  "next_action": "Present requirements list to user for approval. Ask: 'Does this capture what you're building? (yes / adjust)'. Then commit REQUIREMENTS.md and spawn gsd-roadmapper agent.",
-  "context_notes": "We are mid-flow in /gsd-new-project. Requirements have been written based on research findings. The user's key constraint is a configurable base URL for their company's Outlook domain. The 5-phase structure (auth → search → read → digest → hardening) is well-supported by research. Bot detection (Microsoft fingerprinting) is the top risk and is addressed in Phase 1. REQUIREMENTS.md is written but NOT yet committed — must get user approval first."
+  "uncommitted_files": [".planning/ROADMAP.md", ".planning/STATE.md"],
+  "next_action": "Commit ROADMAP.md + STATE.md, then generate CLAUDE.md to complete /gsd-new-project. Run: node .claude/get-shit-done/bin/gsd-tools.cjs commit 'docs: add roadmap' --files .planning/ROADMAP.md .planning/STATE.md. Then generate CLAUDE.md.",
+  "context_notes": "We completed /gsd-new-project initialization. The roadmap is approved. One task remains: commit ROADMAP.md + STATE.md + generate CLAUDE.md. Key finding from this session: Entra Conditional Access blocks agent-browser's default Chrome for Testing binary — must use real Chrome/Edge via OUTLOOK_BROWSER_PATH + OUTLOOK_BROWSER_PROFILE. Also discovered that Outlook web contains unlabeled destructive element refs that triggered an accidental email deletion during research; this validated and tightened the SAFE-01 requirement. REQUIREMENTS.md grew from 28 to 34 v1 requirements. 6-phase roadmap with Phase 0 as mandatory accessibility research before any code is written."
 }
