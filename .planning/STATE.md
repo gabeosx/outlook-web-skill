@@ -2,52 +2,52 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 1 context gathered (discuss mode)
-last_updated: "2026-04-10T18:27:56.816Z"
-last_activity: 2026-04-10 — Phase 0 complete; references/outlook-ui.md produced with 77 confirmed-live annotations
+status: executing
+stopped_at: Phase 1 complete — ready for Phase 2
+last_updated: "2026-04-10"
+last_activity: 2026-04-10 -- Phase 01 complete (verified)
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
-  percent: 100
+  total_plans: 6
+  completed_plans: 3
+  percent: 17
 ---
 
 # Project State
 
 **Last updated:** 2026-04-10
-**Status:** Phase 0 Complete — Ready to Plan Phase 1
+**Status:** Phase 01 Complete — Ready for Phase 02
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-04-10)
 
 **Core value:** A personal assistant Claude Code instance can reliably read and search the user's Outlook inbox without ever sending, deleting, or mutating anything.
-**Current focus:** Phase 1 — Auth Scaffold + CLI Skeleton
+**Current focus:** Phase 02 — search (next)
 
 ## Current Position
 
-Phase: 1 of 6 (Auth Scaffold + CLI Skeleton)
-Plan: 0 of ? in current phase
-Status: Ready to plan Phase 1
-Last activity: 2026-04-10 — Phase 0 complete; references/outlook-ui.md produced with 77 confirmed-live annotations
+Phase: 01 (auth-scaffold-cli-skeleton) — COMPLETE ✓
+Next: Phase 02 — search
+Status: Phase 01 verified and closed
+Last activity: 2026-04-10 -- Phase 01 complete (verified)
 
-Progress: [█░░░░░░░░░] 17%
+Progress: [██░░░░░░░░] 17% (1/6 phases)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: —
+- Total plans completed: 3 (Phase 01)
+- Average duration: ~110 min (Phase 01 including live debug session)
+- Total execution time: ~110 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01-auth-scaffold-cli-skeleton | 3 | ~110 min | ~37 min |
 
 *Updated after each plan completion*
 
@@ -62,6 +62,11 @@ Progress: [█░░░░░░░░░] 17%
 - Single `outlook.js` entry point with subcommands — auth check is shared infrastructure
 - YOLO mode, Coarse granularity — per config.json preferences
 - Phase 0 is exploration-only — no code written until verified selectors exist in `references/outlook-ui.md`
+- **[Phase 1]** No `--profile` CLI flag — Chrome SingletonLock prevents two processes on same profile; `--session-name` alone is sufficient for persistence
+- **[Phase 1]** `AGENT_BROWSER_ALLOWED_DOMAINS` NOT applied for `policy-auth.json` — auth must reach `login.microsoftonline.com` freely
+- **[Phase 1]** Policy action names are granular: `launch`, `navigate`, `url`, `get`, `snapshot` are separate allow-list entries
+- **[Phase 1]** `open --headed` blocks until page load or window close — check URL once after return, no polling loop
+- **[Phase 1]** SC-3 scope: valid session + non-login-redirect URL is sufficient for Phase 1; inbox rendering deferred to Phase 2 (CDN domain restriction)
 
 ### Pending Todos
 
@@ -69,13 +74,14 @@ None captured.
 
 ### Blockers/Concerns
 
-- **Primary risk:** Microsoft's bot detection — Phase 1 must validate `--headed` + `--session-name` against a real Outlook session before any feature work begins. Treat all mitigations as hypotheses until tested.
+- **[RESOLVED — Phase 1]** Primary risk: Microsoft's bot detection — CONFIRMED PASSED. Managed Chrome binary with `--headed` flag passes Entra Conditional Access.
+- **[Phase 2 concern]** `AGENT_BROWSER_ALLOWED_DOMAINS` too restrictive for Outlook SPA: post-auth navigation shows `olkerror.html` (CDN domains blocked). Phase 2 must expand allowed domains before inbox can render.
 - **Focused Inbox:** Confirmed ABSENT on this account. Phase 4 must still be defensive — detect `button "Focused"` presence before navigation.
 - **Attachment ARIA unresolved:** `has:attachment` search works but the opened message had only inline images. File download attachment ARIA structure needs a separate capture in Phase 3.
 - **Evidence section contains personal data (CR-01):** `references/outlook-ui.md` Evidence section contains real colleague names, email addresses, and financial/health correspondence metadata. Consider scrubbing before sharing the repo.
 
 ## Session Continuity
 
-Last session: 2026-04-10T18:27:56.800Z
-Stopped at: Phase 1 context gathered (discuss mode)
-Resume file: .planning/phases/01-auth-scaffold-cli-skeleton/01-CONTEXT.md
+Last session: 2026-04-10
+Stopped at: Phase 1 complete — verified and closed
+Resume: Run `/gsd-plan-phase 2` to begin Phase 02 (search)

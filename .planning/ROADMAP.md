@@ -46,9 +46,9 @@ Plans:
   6. All stdout from the skill is valid JSON; `stderr` is used for diagnostic logging; agent-browser is always invoked with `-q`
 **Plans:** 3 plans
 Plans:
-- [ ] 01-01-PLAN.md — CLI scaffold: outlook.js entry point, lib/output.js, lib/run.js, policy files
-- [ ] 01-02-PLAN.md — Auth implementation: lib/session.js with session detection, headed login, polling loop
-- [ ] 01-03-PLAN.md — Human checkpoint: live auth validation against real Outlook instance
+- [x] 01-01-PLAN.md — CLI scaffold: outlook.js entry point, lib/output.js, lib/run.js, policy files
+- [x] 01-02-PLAN.md — Auth implementation: lib/session.js with session detection, headed login, polling loop
+- [x] 01-03-PLAN.md — Human checkpoint: live auth validation against real Outlook instance
 
 ### Phase 2: Search Operation
 **Goal**: Users (via the calling agent) can search Outlook emails by KQL query and receive a structured JSON array of results with stable message IDs for downstream use
