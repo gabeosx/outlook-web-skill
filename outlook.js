@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('fs');
 const os = require('os');
-const { outputError } = require('./lib/output');
+const { outputError, log } = require('./lib/output');
 
 // Auto-load .env from project root if present (shell env vars take precedence)
 const envFile = fs.existsSync(__dirname + '/.env')
@@ -66,3 +66,6 @@ switch (cmd) {
     outputError('digest', 'OPERATION_FAILED', 'digest not yet implemented — coming in Phase 4');
     break;
 }
+
+log('outlook.js: switch complete, calling process.exit(0)');
+process.exit(0);

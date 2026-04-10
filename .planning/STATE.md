@@ -3,38 +3,37 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 context gathered (discuss mode)
-last_updated: "2026-04-10T20:41:21.030Z"
-last_activity: 2026-04-10 -- Phase 02 execution started
+stopped_at: Phase 02 complete — all 5 verification tests passed
+last_updated: "2026-04-10"
+last_activity: 2026-04-10 -- Phase 02 complete, all live search tests passed
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 6
-  completed_plans: 4
-  percent: 67
+  completed_plans: 6
+  percent: 33
 ---
 
 # Project State
 
 **Last updated:** 2026-04-10
-**Status:** Executing Phase 02
+**Status:** Phase 02 complete — ready for Phase 03
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-04-10)
 
 **Core value:** A personal assistant Claude Code instance can reliably read and search the user's Outlook inbox without ever sending, deleting, or mutating anything.
-**Current focus:** Phase 02 — search-operation
+**Current focus:** Phase 03 — read-operation (next)
 
 ## Current Position
 
-Phase: 02 (search-operation) — EXECUTING
-Plan: 1 of 2
-Next: Phase 02 — search
-Status: Executing Phase 02
-Last activity: 2026-04-10 -- Phase 02 execution started
+Phase: 02 (search-operation) — COMPLETE
+Next: Phase 03 — read-operation
+Status: Phase 02 verified against live Outlook; all 5 tests passed
+Last activity: 2026-04-10 -- Phase 02 complete, all live search tests passed
 
-Progress: [██░░░░░░░░] 17% (1/6 phases)
+Progress: [████░░░░░░] 33% (2/6 phases)
 
 ## Performance Metrics
 
@@ -68,6 +67,11 @@ Progress: [██░░░░░░░░] 17% (1/6 phases)
 - **[Phase 1]** Policy action names are granular: `launch`, `navigate`, `url`, `get`, `snapshot` are separate allow-list entries
 - **[Phase 1]** `open --headed` blocks until page load or window close — check URL once after return, no polling loop
 - **[Phase 1]** SC-3 scope: valid session + non-login-redirect URL is sufficient for Phase 1; inbox rendering deferred to Phase 2 (CDN domain restriction)
+- **[Phase 2]** `agent-browser batch` ignores `--json` on snapshot — output is accessibility tree text format (`- option "name" [ref=eNN]`)
+- **[Phase 2]** Snapshot must be the final command inside the batch — page resets to `about:blank` after batch CLI exits
+- **[Phase 2]** Scroll-accumulate loop removed — Outlook virtualizes list during scroll, temporarily clearing accessibility tree
+- **[Phase 2]** `id` is always null in search results — eval also lands on `about:blank`; Phase 3 identifies messages by accessible name
+- **[Phase 2]** 5s initial wait required for cold Chrome start (3s fails on fresh daemon)
 
 ### Pending Todos
 
@@ -83,6 +87,6 @@ None captured.
 
 ## Session Continuity
 
-Last session: 2026-04-10T20:22:51.209Z
-Stopped at: Phase 2 context gathered (discuss mode)
-Resume: Run `/gsd-plan-phase 2` to begin Phase 02 (search)
+Last session: 2026-04-10
+Stopped at: Phase 02 complete — all 5 live verification tests passed
+Resume: Run `/gsd-plan-phase 3` to plan Phase 03 (read-operation)
