@@ -161,15 +161,17 @@ agent-browser snapshot -s "main[aria-label='Reading Pane']"
 |----------|-------|------------|
 | Attachment presence in message list ARIA | NOT visible — no attachment-specific ARIA annotation in `option` accessible names | confirmed-live |
 | Attachment badge as distinct ARIA element | NOT present on message rows in ARIA tree | confirmed-live |
-| `has:attachment` KQL query | Works on this tenant — returns messages with attachments | confirmed-live |
-| `hasattachment:yes` KQL property syntax | Standard Exchange KQL property; functionally equivalent to `has:attachment` | inferred |
-| File download attachments in reading pane | UNRESOLVED — the `has:attachment` message opened (Merrill Lynch) had only inline images; no file-download attachment ARIA structure was captured | unresolved |
+| `hasattachment:yes` KQL property | Targets messages with actual downloadable file attachments — use this, not `has:attachment` | inferred |
+| `has:attachment` KQL query | Returns results but includes HTML emails with inline embedded images; NOT reliable for finding file attachments | confirmed-live |
+| File download attachments in reading pane | UNRESOLVED — capture 8 used `has:attachment` which surfaced inline-image messages only; file-download attachment ARIA structure not captured | unresolved |
 | Inline image indicator | `button "Show original size"` inside `document "Message body"` | confirmed-live |
 | Ribbon filter button | `button "Has attachments"` in the Search ribbon tab — clicking filters search results | confirmed-live |
 
-**What was captured:** The `has:attachment` search (capture 8) returned results. The opened message was a Merrill Lynch email with inline images only (rendered as `button "Show original size"` elements). No traditional file attachment download links or `attachment` ARIA-labeled elements were present. File attachment ARIA structure (e.g., `link "{filename}.pdf"` or `button "Download {filename}"`) remains unresolved.
+**What was captured:** The `has:attachment` search (capture 8) returned results, but Exchange's index counts inline embedded images (HTML emails) as attachments for this query. The opened message (Merrill Lynch) had only inline images rendered as `button "Show original size"` — no actual file attachment ARIA structure was visible.
 
-**Recommendation for Phase 3:** When implementing `has_attachments` detection, use `has:attachment` search query as the detection method. For attachment name extraction, re-run with a message known to have file attachments and capture the reading pane.
+**`has:attachment` vs `hasattachment:yes`:** `hasattachment:yes` is the KQL property that targets actual downloadable file attachments. `has:attachment` is broader and unreliable for this purpose.
+
+**What remains unresolved:** File attachment ARIA structure in the reading pane (e.g., an attachment list region, `link "{filename}.pdf"`, or `button "Download {filename}"`). Phase 3 should re-run using `hasattachment:yes` against a message known to have a real file attachment.
 
 ---
 
