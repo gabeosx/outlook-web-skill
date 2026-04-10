@@ -42,7 +42,7 @@ switch (cmd) {
     require('./lib/session').runAuth();
     break;
   case 'search':
-    outputError('search', 'OPERATION_FAILED', 'search not yet implemented — coming in Phase 2');
+    require('./lib/search').runSearch();
     break;
   case 'read':
     outputError('read', 'OPERATION_FAILED', 'read not yet implemented — coming in Phase 3');
