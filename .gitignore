@@ -1,0 +1,5 @@
+# Environment variables (may contain personal Outlook URL and browser paths)
+.env
+
+# Browser session profile (contains auth cookies — never commit)
+.outlook-web-profile/
