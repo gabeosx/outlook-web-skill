@@ -1,0 +1,13 @@
+{
+  "default": "deny",
+  "allow": [
+    "navigate",
+    "snapshot",
+    "get",
+    "wait",
+    "scroll",
+    "close",
+    "state",
+    "session"
+  ]
+}
