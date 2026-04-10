@@ -29,7 +29,9 @@ This skill gives a personal assistant Claude Code instance read-only access to O
   3. The search URL format (`/mail/search?q=` or fallback) is confirmed as working or rejected with the actual working alternative documented
   4. Focused Inbox default behavior is documented — whether digest must navigate to an "All" tab and how
   5. All selector findings are annotated with confidence level (confirmed live vs. inferred)
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 00-01-PLAN.md — Capture live Outlook ARIA snapshots and produce references/outlook-ui.md
 
 ### Phase 1: Auth Scaffold + CLI Skeleton
 **Goal**: The skill's `outlook.js` entry point exists, the read-only Action Policy is enforced before any browser launch, and a real Chrome/Edge session can authenticate, persist, and restore across separate CLI invocations — bot detection is validated or a fallback path is confirmed
@@ -100,7 +102,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 0. Accessibility Research | 0/? | Not started | - |
+| 0. Accessibility Research | 0/1 | Planned | - |
 | 1. Auth Scaffold + CLI Skeleton | 0/? | Not started | - |
 | 2. Search Operation | 0/? | Not started | - |
 | 3. Read Operation | 0/? | Not started | - |
