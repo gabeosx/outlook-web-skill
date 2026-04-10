@@ -1,6 +1,21 @@
 'use strict';
+const fs = require('fs');
 const os = require('os');
 const { outputError } = require('./lib/output');
+
+// Auto-load .env from project root if present (shell env vars take precedence)
+const envFile = fs.existsSync(__dirname + '/.env')
+  ? fs.readFileSync(__dirname + '/.env', 'utf8')
+  : '';
+for (const line of envFile.split('\n')) {
+  const t = line.trim();
+  if (!t || t.startsWith('#')) continue;
+  const eq = t.indexOf('=');
+  if (eq === -1) continue;
+  const key = t.slice(0, eq).trim();
+  const val = t.slice(eq + 1).trim();
+  if (key && !(key in process.env)) process.env[key] = val;
+}
 
 // ── Step 1: Env var validation (before argv, before any browser) ──
 const REQUIRED_ENV = ['OUTLOOK_BASE_URL', 'OUTLOOK_BROWSER_PATH', 'OUTLOOK_BROWSER_PROFILE'];
