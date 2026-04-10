@@ -44,7 +44,11 @@ Plans:
   4. Running `node outlook.js unknown-cmd` returns `{"operation":"unknown-cmd","status":"error","error":{"code":"INVALID_ARGS",...}}` on stdout with exit code 1 — no browser is launched
   5. The `policy.json` Action Policy (`default: deny`) is in place and the `AGENT_BROWSER_ACTION_POLICY` env var is set before any browser launch; `click` and `fill` are only allowed during `auth`
   6. All stdout from the skill is valid JSON; `stderr` is used for diagnostic logging; agent-browser is always invoked with `-q`
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 01-01-PLAN.md — CLI scaffold: outlook.js entry point, lib/output.js, lib/run.js, policy files
+- [ ] 01-02-PLAN.md — Auth implementation: lib/session.js with session detection, headed login, polling loop
+- [ ] 01-03-PLAN.md — Human checkpoint: live auth validation against real Outlook instance
 
 ### Phase 2: Search Operation
 **Goal**: Users (via the calling agent) can search Outlook emails by KQL query and receive a structured JSON array of results with stable message IDs for downstream use
@@ -103,7 +107,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 0. Accessibility Research | 0/1 | Planned | - |
-| 1. Auth Scaffold + CLI Skeleton | 0/? | Not started | - |
+| 1. Auth Scaffold + CLI Skeleton | 0/3 | Not started | - |
 | 2. Search Operation | 0/? | Not started | - |
 | 3. Read Operation | 0/? | Not started | - |
 | 4. Daily Digest Operation | 0/? | Not started | - |
