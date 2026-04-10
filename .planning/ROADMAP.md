@@ -31,7 +31,7 @@ This skill gives a personal assistant Claude Code instance read-only access to O
   5. All selector findings are annotated with confidence level (confirmed live vs. inferred)
 **Plans:** 1 plan
 Plans:
-- [ ] 00-01-PLAN.md — Capture live Outlook ARIA snapshots and produce references/outlook-ui.md
+- [x] 00-01-PLAN.md — Capture live Outlook ARIA snapshots and produce references/outlook-ui.md
 
 ### Phase 1: Auth Scaffold + CLI Skeleton
 **Goal**: The skill's `outlook.js` entry point exists, the read-only Action Policy is enforced before any browser launch, and a real Chrome/Edge session can authenticate, persist, and restore across separate CLI invocations — bot detection is validated or a fallback path is confirmed
