@@ -5,6 +5,7 @@
     "navigate",
     "snapshot",
     "get",
+    "url",
     "wait",
     "scroll",
     "close",
