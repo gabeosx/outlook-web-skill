@@ -60,7 +60,7 @@ switch (cmd) {
     require('./lib/search').runSearch();
     break;
   case 'read':
-    outputError('read', 'OPERATION_FAILED', 'read not yet implemented — coming in Phase 3');
+    require('./lib/read').runRead();
     break;
   case 'digest':
     outputError('digest', 'OPERATION_FAILED', 'digest not yet implemented — coming in Phase 4');
