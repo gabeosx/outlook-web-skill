@@ -74,8 +74,10 @@ Plans:
   2. The `body_text` field contains the full email body as plain text (not HTML tags) extracted via the accessibility snapshot scoped to the reading pane landmark
   3. `attachment_names` is a non-null array — empty if no attachments, populated with filenames if attachments are present
   4. If the session has expired mid-operation (Outlook redirects to login), the operation returns `{"status":"error","error":{"code":"SESSION_INVALID",...}}` rather than crashing or returning partial data
-**Plans**: TBD
-**UI hint**: yes
+**Plans:** 2 plans
+Plans:
+- [ ] 03-01-PLAN.md — Search ID fix (inline eval) + lib/read.js implementation + outlook.js wiring
+- [ ] 03-02-PLAN.md — Live verification: 6 tests (search IDs, read email, missing ID, zero results, attachment ARIA capture, end-to-end pipeline) + human checkpoint
 
 ### Phase 4: Daily Digest Operation
 **Goal**: Users can get a scored and ranked view of today's inbox that surfaces the most important messages first, without any additional query construction
@@ -104,13 +106,13 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 0 -> 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 0. Accessibility Research | 0/1 | Planned | - |
 | 1. Auth Scaffold + CLI Skeleton | 0/3 | Not started | - |
 | 2. Search Operation | 0/2 | Not started | - |
-| 3. Read Operation | 0/? | Not started | - |
+| 3. Read Operation | 0/2 | Planned | - |
 | 4. Daily Digest Operation | 0/? | Not started | - |
 | 5. Skill Packaging | 0/? | Not started | - |
