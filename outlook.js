@@ -63,7 +63,7 @@ switch (cmd) {
     require('./lib/read').runRead();
     break;
   case 'digest':
-    outputError('digest', 'OPERATION_FAILED', 'digest not yet implemented — coming in Phase 4');
+    require('./lib/digest').runDigest();
     break;
 }
 
