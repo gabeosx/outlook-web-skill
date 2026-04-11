@@ -3,37 +3,38 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 3 context gathered (discuss mode)
-last_updated: "2026-04-10T23:10:26.857Z"
-last_activity: 2026-04-10 -- Phase 02 complete, all live search tests passed
+stopped_at: Phase 4 context gathered (discuss mode)
+last_updated: "2026-04-11T15:34:05.291Z"
+last_activity: 2026-04-10 -- Phase 03 live verification complete (commit 705a8dc)
 progress:
   total_phases: 6
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  completed_phases: 4
+  total_plans: 8
+  completed_plans: 8
   percent: 100
 ---
 
 # Project State
 
-**Last updated:** 2026-04-10
-**Status:** Phase 02 complete — ready for Phase 03
+**Last updated:** 2026-04-11
+**Status:** Phase 03 complete — ready to start Phase 04
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-04-10)
 
 **Core value:** A personal assistant Claude Code instance can reliably read and search the user's Outlook inbox without ever sending, deleting, or mutating anything.
-**Current focus:** Phase 03 — read-operation (next)
+**Current focus:** Phase 04 — daily-digest-operation
 
 ## Current Position
 
-Phase: 02 (search-operation) — COMPLETE
-Next: Phase 03 — read-operation
-Status: Phase 02 verified against live Outlook; all 5 tests passed
-Last activity: 2026-04-10 -- Phase 02 complete, all live search tests passed
+Phase: 04 (daily-digest-operation) — NOT STARTED
+Plan: 0 of TBD
+Next: Discuss Phase 04 context, then plan
+Status: Phase 03 complete, advancing to Phase 04
+Last activity: 2026-04-10 -- Phase 03 live verification complete (commit 705a8dc)
 
-Progress: [████░░░░░░] 33% (2/6 phases)
+Progress: [██████░░░░] ~50% (3/6 phases complete)
 
 ## Performance Metrics
 
@@ -72,6 +73,12 @@ Progress: [████░░░░░░] 33% (2/6 phases)
 - **[Phase 2]** Scroll-accumulate loop removed — Outlook virtualizes list during scroll, temporarily clearing accessibility tree
 - **[Phase 2]** `id` is always null in search results — eval also lands on `about:blank`; Phase 3 identifies messages by accessible name
 - **[Phase 2]** 5s initial wait required for cold Chrome start (3s fails on fresh daemon)
+- **[Phase 3]** eval returns are double-encoded by agent-browser — two-level JSON.parse required
+- **[Phase 3]** Exchange IDs are data-convid (ConversationID), not el.id (DOM GUID)
+- **[Phase 3]** /mail/id/ URL only accepts message-level ItemId; read uses search+click-by-convid navigation
+- **[Phase 3]** Reading pane is `<div role=main>` — selector is `[aria-label="Reading Pane"]` not `main[aria-label=...]`
+- **[Phase 3]** Body end marker is `toolbar "Quick actions"` — `menuitem "Reply"` also appears in unnamed toolbar BEFORE body
+- **[Phase 3]** Attachment ARIA: `heading "file attachments" [level=3]` + listbox/option/StaticText — D-14 RESOLVED
 
 ### Pending Todos
 
@@ -82,11 +89,11 @@ None captured.
 - **[RESOLVED — Phase 1]** Primary risk: Microsoft's bot detection — CONFIRMED PASSED. Managed Chrome binary with `--headed` flag passes Entra Conditional Access.
 - **[Phase 2 concern]** `AGENT_BROWSER_ALLOWED_DOMAINS` too restrictive for Outlook SPA: post-auth navigation shows `olkerror.html` (CDN domains blocked). Phase 2 must expand allowed domains before inbox can render.
 - **Focused Inbox:** Confirmed ABSENT on this account. Phase 4 must still be defensive — detect `button "Focused"` presence before navigation.
-- **Attachment ARIA unresolved:** `has:attachment` search works but the opened message had only inline images. File download attachment ARIA structure needs a separate capture in Phase 3.
+- **[RESOLVED — Phase 3]** Attachment ARIA resolved: `heading "file attachments" [level=3]` + listbox/option/StaticText pattern live-verified. D-14 closed.
 - **Evidence section contains personal data (CR-01):** `references/outlook-ui.md` Evidence section contains real colleague names, email addresses, and financial/health correspondence metadata. Consider scrubbing before sharing the repo.
 
 ## Session Continuity
 
-Last session: 2026-04-10T23:10:26.850Z
-Stopped at: Phase 3 context gathered (discuss mode)
-Resume: Run `/gsd-plan-phase 3` to plan Phase 03 (read-operation)
+Last session: 2026-04-11T15:34:05.280Z
+Stopped at: Phase 4 context gathered (discuss mode)
+Resume: `/clear` then `/gsd-discuss-phase 4` (CONTEXT.md does not exist for Phase 04 yet)
