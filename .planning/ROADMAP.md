@@ -76,7 +76,7 @@ Plans:
   4. If the session has expired mid-operation (Outlook redirects to login), the operation returns `{"status":"error","error":{"code":"SESSION_INVALID",...}}` rather than crashing or returning partial data
 **Plans:** 2 plans
 Plans:
-- [ ] 03-01-PLAN.md — Search ID fix (inline eval) + lib/read.js implementation + outlook.js wiring
+- [x] 03-01-PLAN.md — Search ID fix (inline eval) + lib/read.js implementation + outlook.js wiring
 - [ ] 03-02-PLAN.md — Live verification: 6 tests (search IDs, read email, missing ID, zero results, attachment ARIA capture, end-to-end pipeline) + human checkpoint
 
 ### Phase 4: Daily Digest Operation
@@ -88,8 +88,10 @@ Plans:
   2. Each result includes `id`, `subject`, `from`, `date`, `preview`, `is_read`, `is_flagged`, `importance_score`, `importance_signals` — the calling agent can describe why each message was ranked where it was
   3. The scroll-and-accumulate loop handles inboxes with more than 20 messages — results are not silently capped at the first DOM render
   4. Messages in the "Focused" inbox view and the "All" view are handled correctly — digest always operates on the complete inbox, not just the AI-filtered Focused tab
-**Plans**: TBD
-**UI hint**: yes
+**Plans:** 2 plans
+Plans:
+- [ ] 04-01-PLAN.md — lib/digest.js implementation: inbox navigation, Today group extraction, scroll-accumulate, importance scoring, outlook.js wiring
+- [ ] 04-02-PLAN.md — Live verification: 3 tests (schema completeness, sort order, today-only filter) + human checkpoint
 
 ### Phase 5: Skill Packaging
 **Goal**: The skill is fully documented for consumption by a calling Claude Code agent — all reference files exist, SKILL.md teaches the calling LLM what it cannot be assumed to know, and the skill directory is self-contained
@@ -114,5 +116,5 @@ Phases execute in numeric order: 0 -> 1 -> 2 -> 3 -> 4 -> 5
 | 1. Auth Scaffold + CLI Skeleton | 0/3 | Not started | - |
 | 2. Search Operation | 0/2 | Not started | - |
 | 3. Read Operation | 0/2 | Planned | - |
-| 4. Daily Digest Operation | 0/? | Not started | - |
+| 4. Daily Digest Operation | 0/2 | Planned | - |
 | 5. Skill Packaging | 0/? | Not started | - |
