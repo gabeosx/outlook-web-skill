@@ -2,39 +2,44 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 4 context gathered (discuss mode)
-last_updated: "2026-04-11T15:34:05.291Z"
-last_activity: 2026-04-10 -- Phase 03 live verification complete (commit 705a8dc)
+status: executing
+stopped_at: Phase 4 complete, quick task 260412-hek complete
+last_updated: "2026-04-12T16:35:00.000Z"
+last_activity: 2026-04-12 -- Quick task 260412-hek complete (scoring externalization + tune subcommand)
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 8
+  total_plans: 10
   completed_plans: 8
-  percent: 100
+  percent: 80
 ---
 
 # Project State
 
-**Last updated:** 2026-04-11
-**Status:** Phase 03 complete — ready to start Phase 04
+**Last updated:** 2026-04-12
+**Status:** Phase 04 complete — ready for Phase 05
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-04-10)
 
 **Core value:** A personal assistant Claude Code instance can reliably read and search the user's Outlook inbox without ever sending, deleting, or mutating anything.
-**Current focus:** Phase 04 — daily-digest-operation
+**Current focus:** Phase 05 — skill packaging
 
 ## Current Position
 
-Phase: 04 (daily-digest-operation) — NOT STARTED
-Plan: 0 of TBD
-Next: Discuss Phase 04 context, then plan
-Status: Phase 03 complete, advancing to Phase 04
-Last activity: 2026-04-10 -- Phase 03 live verification complete (commit 705a8dc)
+Phase: 04 (daily-digest-operation) — COMPLETE
+Next: Phase 05 (skill-packaging)
+Status: Phase 04 verified + reviewed. Quick task 260412-hek (scoring externalization) complete.
+Last activity: 2026-04-12 -- scoring.json + tune subcommand added
 
-Progress: [██████░░░░] ~50% (3/6 phases complete)
+Progress: [██████░░░░] ~50% (4/6 phases complete, Phase 5 next)
+
+## Quick Tasks Completed
+
+| ID | Description | Date | Commit |
+|----|-------------|------|--------|
+| 260412-hek | Externalize scoring config to scoring.json + add tune subcommand | 2026-04-12 | 56fba2e |
 
 ## Performance Metrics
 

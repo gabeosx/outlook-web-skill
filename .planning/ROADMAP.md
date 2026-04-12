@@ -90,8 +90,8 @@ Plans:
   4. Messages in the "Focused" inbox view and the "All" view are handled correctly — digest always operates on the complete inbox, not just the AI-filtered Focused tab
 **Plans:** 2 plans
 Plans:
-- [ ] 04-01-PLAN.md — lib/digest.js implementation: inbox navigation, Today group extraction, scroll-accumulate, importance scoring, outlook.js wiring
-- [ ] 04-02-PLAN.md — Live verification: 3 tests (schema completeness, sort order, today-only filter) + human checkpoint
+- [x] 04-01-PLAN.md — lib/digest.js implementation: inbox navigation, Today group extraction, scroll-accumulate, importance scoring, outlook.js wiring
+- [x] 04-02-PLAN.md — Live verification: 3 tests (schema completeness, sort order, today-only filter) + human checkpoint
 
 ### Phase 5: Skill Packaging
 **Goal**: The skill is fully documented for consumption by a calling Claude Code agent — all reference files exist, SKILL.md teaches the calling LLM what it cannot be assumed to know, and the skill directory is self-contained
@@ -112,9 +112,9 @@ Phases execute in numeric order: 0 -> 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 0. Accessibility Research | 0/1 | Planned | - |
-| 1. Auth Scaffold + CLI Skeleton | 0/3 | Not started | - |
-| 2. Search Operation | 0/2 | Not started | - |
-| 3. Read Operation | 0/2 | Planned | - |
-| 4. Daily Digest Operation | 0/2 | Planned | - |
+| 0. Accessibility Research | 1/1 | Complete | 2026-04-10 |
+| 1. Auth Scaffold + CLI Skeleton | 3/3 | Complete | 2026-04-10 |
+| 2. Search Operation | 2/2 | Complete | 2026-04-10 |
+| 3. Read Operation | 2/2 | Complete | 2026-04-11 |
+| 4. Daily Digest Operation | 2/2 | Complete | 2026-04-12 |
 | 5. Skill Packaging | 0/? | Not started | - |
