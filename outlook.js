@@ -42,7 +42,7 @@ try {
 }
 
 // ── Step 4: Subcommand dispatch ──
-const VALID_COMMANDS = ['auth', 'search', 'read', 'digest'];
+const VALID_COMMANDS = ['auth', 'search', 'read', 'digest', 'tune'];
 const cmd = process.argv[2];
 
 if (!cmd || !VALID_COMMANDS.includes(cmd)) {
@@ -64,6 +64,9 @@ switch (cmd) {
     break;
   case 'digest':
     require('./lib/digest').runDigest();
+    break;
+  case 'tune':
+    require('./lib/tune').runTune();
     break;
 }
 
