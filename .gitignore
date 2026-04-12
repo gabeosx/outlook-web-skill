@@ -9,3 +9,12 @@ references/outlook-ui.md
 
 # Browser session profile (contains auth cookies — never commit)
 .outlook-web-profile/
+
+# Personal assistant workspace (local-only, not part of the skill package)
+assistant/
+
+# Browser capture snapshots (may contain tenant URLs and personal data)
+snapshot.txt
+
+# Claude Code local settings (may contain personal API keys / hooks)
+.claude/
