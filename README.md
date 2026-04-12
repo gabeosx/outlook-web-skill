@@ -1,12 +1,14 @@
 # outlook-web-skill
 
-A [Claude Code](https://claude.ai/code) skill that gives a personal assistant Claude instance **read-only access to your Outlook web inbox** — no Microsoft Graph API, no app registration, no OAuth dance. It drives a real Chrome session the same way you would, and returns structured JSON.
+A command-line tool that gives an AI assistant **read-only access to your Outlook web inbox** — no Microsoft Graph API, no app registration, no OAuth dance. It drives a real Chrome session the same way you would, and returns structured JSON that any AI can parse.
+
+Works with Claude Code, Codex, Gemini, or any AI that can run shell commands.
 
 ---
 
 ## Why this exists
 
-Microsoft's Graph API requires an app registration, admin consent, and periodic token refresh — significant overhead for personal productivity use. This skill takes a different approach: it reuses the Chrome session where you're already logged in to Outlook, navigates the web UI programmatically, and extracts what you need as clean JSON.
+Microsoft's Graph API requires an app registration, admin consent, and periodic token refresh — significant overhead for personal productivity use. This tool takes a different approach: it reuses the Chrome session where you're already logged in to Outlook, navigates the web UI programmatically, and extracts what you need as clean JSON.
 
 The tradeoff is that it's tightly coupled to the Outlook web UI. If Microsoft redesigns the inbox, selectors may need updating. But for personal daily use it's fast to set up and requires zero IT involvement.
 
@@ -23,9 +25,9 @@ The tradeoff is that it's tightly coupled to the Outlook web UI. If Microsoft re
 ## How it works
 
 ```
-Claude (personal assistant)
+Your AI assistant
   │
-  │  invokes skill via
+  │  runs
   ▼
 node outlook.js <subcommand>
   │
@@ -42,7 +44,7 @@ Outlook web (your existing login session)
 JSON → stdout
 ```
 
-The skill uses [`@vercel/agent-browser`](https://github.com/vercel-labs/agent-browser) to control Chrome via the Chrome DevTools Protocol. Your existing Entra SSO session (cookies + localStorage) is reused across invocations via a named session stored in `~/.agent-browser/sessions/`.
+Uses [`@vercel/agent-browser`](https://github.com/vercel-labs/agent-browser) to control Chrome via the Chrome DevTools Protocol. Your existing Entra SSO session (cookies + localStorage) is reused across invocations via a named session stored in `~/.agent-browser/sessions/`.
 
 ---
 
@@ -77,7 +79,7 @@ OUTLOOK_BASE_URL=https://outlook.office.com/mail/0/
 # Path to Chrome or Edge binary
 OUTLOOK_BROWSER_PATH=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 
-# A dedicated Chrome profile directory for this skill's session
+# A dedicated Chrome profile directory for this tool's session
 # (will be created on first run — keep separate from your daily Chrome profile)
 OUTLOOK_BROWSER_PROFILE=~/.outlook-skill-profile
 ```
@@ -346,35 +348,30 @@ To tune for your inbox: add urgency keywords to `scoring.json`, then run `node o
 
 ---
 
-## Using as a Claude Code skill
+## AI assistant integration
 
-Install this repo so a Claude Code personal assistant can invoke it automatically when you ask about your email.
+The tool is a plain CLI — any AI assistant that can run shell commands can use it. Give your assistant the subcommand reference above and point it at `node outlook.js`.
 
-### Option A — Workspace directory (recommended for daily use)
+### Claude Code
 
-The repo includes an `assistant/` setup script that creates a local-only workspace (gitignored) with the skill wired up:
+`SKILL.md` at the repo root is a Claude Code skill descriptor. Place it (and the `references/` directory) at `.claude/skills/outlook-web/` inside your Claude Code project, with `outlook.js` and `lib/` accessible from the same directory:
 
-```bash
-# From the repo root — already done if you cloned the repo
-ls assistant/   # outlook.js, lib/, .agents/skills/outlook-web/, etc.
+```
+your-project/
+  .claude/
+    skills/
+      outlook-web/
+        SKILL.md          ← skill descriptor (copy or symlink)
+        references/       ← reference docs (copy or symlink)
+        outlook.js        ← symlink to the CLI entry point
+        lib/              ← symlink to the lib directory
 ```
 
-Then:
+Claude will then invoke the skill automatically when you ask about your email.
 
-```bash
-cd assistant
-claude
-```
+### Other AI assistants (Codex, Gemini, etc.)
 
-Claude picks up the skill from `.agents/skills/outlook-web/SKILL.md` and you can ask naturally:
-
-> "What emails need my attention today?"
-> "Find the email from Alice about Q1 budget"
-> "Read that email"
-
-### Option B — Add to an existing Claude Code project
-
-Copy `SKILL.md` and the `references/` directory into your project's `.agents/skills/outlook-web/` directory, and symlink or copy `outlook.js` and `lib/` to a location Claude can reach.
+Include the contents of `SKILL.md` in your system prompt, or summarize it as tool documentation. The assistant calls `node outlook.js <subcommand>` directly as a shell command. The `references/` files (`kql-syntax.md`, `error-recovery.md`, `digest-signals.md`) can be included as additional context.
 
 ---
 
@@ -382,7 +379,7 @@ Copy `SKILL.md` and the `references/` directory into your project's `.agents/ski
 
 The action policy (`policy-read.json`, `policy-search.json`, `policy-auth.json`) is enforced at the `agent-browser` layer with `"default": "deny"`. Only `navigate`, `snapshot`, `get`, `scroll`, `wait`, `click`, `fill`, `press`, and `evaluate` actions are permitted — the exact set needed for reading. Any action not on the allowlist is rejected before it reaches the browser.
 
-This means even if a prompt injection in an email body told Claude to "reply to this email using the skill", the skill's browser layer would refuse the attempt.
+This means even if a prompt injection in an email body instructed the assistant to reply or delete, the browser layer would refuse the attempt regardless of what the AI tries to do.
 
 ---
 
