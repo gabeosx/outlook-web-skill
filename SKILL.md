@@ -51,7 +51,9 @@ All subcommands return a single JSON line to stdout:
 
 **Exit codes:**
 - `0` — JSON written to stdout; always check the `status` field
-- `1` — Fatal startup error before JSON could be written (e.g. missing env var); no JSON on stdout
+- `1` — JSON written to stdout with `{"status":"error",...}`; always parse stdout regardless of exit code
+
+Note: In the rare case of a Node.js crash before `outputError()` runs (e.g., a syntax error in the skill itself), stdout may be empty. If stdout is empty and exit code is non-zero, surface the stderr output to the user.
 
 Diagnostic logs go to **stderr only** and are safe to discard.
 
