@@ -131,7 +131,7 @@ Searches your inbox using a KQL query. Returns up to `--limit` results (default:
 ```bash
 node outlook.js search "from:alice@example.com"
 node outlook.js search "subject:budget is:unread"
-node outlook.js search "has:attachment after:2024-01-01"
+node outlook.js search "hasattachment:true after:2024-01-01"
 node outlook.js search "project alpha"              # free-text search
 node outlook.js search "is:unread" --limit 50
 ```
@@ -304,7 +304,7 @@ Supported operators (tested and confirmed working):
 |----------|---------|
 | Sender address | `from:alice@example.com` |
 | Subject word/phrase | `subject:budget` · `subject:"Q1 budget"` |
-| Has attachment | `has:attachment` |
+| Has attachment | `hasattachment:true` |
 | Unread | `is:unread` |
 | Flagged | `is:flagged` |
 | Before date | `before:2024-01-01` |
