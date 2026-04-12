@@ -4,6 +4,10 @@ A command-line tool that gives an AI assistant **read-only access to your Outloo
 
 Works with Claude Code, Codex, Gemini, or any AI that can run shell commands.
 
+```bash
+npx skills add gabeosx/outlook-web-skill
+```
+
 ---
 
 ## Why this exists
@@ -350,9 +354,30 @@ To tune for your inbox: add urgency keywords to `scoring.json`, then run `node o
 
 ## AI assistant integration
 
-The tool is a plain CLI — any AI assistant that can run shell commands can use it. Give your assistant the subcommand reference above and point it at `node outlook.js`.
+The tool is a plain CLI — any AI assistant that can run shell commands can use it.
 
-### Claude Code
+### Install with npx skills (recommended)
+
+[`npx skills`](https://github.com/vercel-labs/skills) is the standard package manager for AI agent skills. It works with Claude Code, Cursor, OpenCode, GitHub Copilot, and 40+ other assistants.
+
+```bash
+# Install into the current project
+npx skills add gabeosx/outlook-web-skill
+
+# Or install globally (available in all projects)
+npx skills add gabeosx/outlook-web-skill --global
+```
+
+This copies the skill files into `.claude/skills/outlook-web-skill/` (or the equivalent directory for your AI assistant). Then complete the [Setup](#setup) steps to configure `.env` and authenticate — the CLI files are already in place.
+
+Manage installed skills:
+```bash
+npx skills list                              # see what's installed
+npx skills update gabeosx/outlook-web-skill  # pull latest changes
+npx skills remove outlook-web-skill          # uninstall
+```
+
+### Manual install (Claude Code)
 
 `SKILL.md` at the repo root is a Claude Code skill descriptor. Place it (and the `references/` directory) at `.claude/skills/outlook-web/` inside your Claude Code project, with `outlook.js` and `lib/` accessible from the same directory:
 
@@ -366,8 +391,6 @@ your-project/
         outlook.js        ← symlink to the CLI entry point
         lib/              ← symlink to the lib directory
 ```
-
-Claude will then invoke the skill automatically when you ask about your email.
 
 ### Other AI assistants (Codex, Gemini, etc.)
 
