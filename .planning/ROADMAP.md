@@ -103,7 +103,10 @@ Plans:
   3. `references/error-recovery.md` exists and documents the correct calling-agent response for each error code: `SESSION_INVALID`, `AUTH_REQUIRED`, `OPERATION_FAILED`, `INVALID_ARGS`
   4. `references/digest-signals.md` exists and documents the `importance_score` scale (0-100), the weight of each scoring signal, and all possible `importance_signals` string values so the calling agent can explain a digest result in natural language
   5. A calling Claude Code agent reading only `SKILL.md` has enough information to invoke all four subcommands correctly without referring to the skill's source code
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 05-01-PLAN.md — Write SKILL.md and references/kql-syntax.md
+- [ ] 05-02-PLAN.md — Write references/error-recovery.md and references/digest-signals.md
 
 ## Progress
 
