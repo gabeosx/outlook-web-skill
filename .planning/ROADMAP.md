@@ -105,8 +105,8 @@ Plans:
   5. A calling Claude Code agent reading only `SKILL.md` has enough information to invoke all four subcommands correctly without referring to the skill's source code
 **Plans:** 2 plans
 Plans:
-- [ ] 05-01-PLAN.md — Write SKILL.md and references/kql-syntax.md
-- [ ] 05-02-PLAN.md — Write references/error-recovery.md and references/digest-signals.md
+- [x] 05-01-PLAN.md — Write SKILL.md and references/kql-syntax.md
+- [x] 05-02-PLAN.md — Write references/error-recovery.md and references/digest-signals.md
 
 ## Progress
 
