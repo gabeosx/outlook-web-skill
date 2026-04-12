@@ -83,6 +83,8 @@ The skill classifies each sender to decide which unread weight applies. This log
 - The combined from + subject + preview text matches any entry in `bulk_patterns` from `scoring.json.example`:
   `no reply`, `noreply`, `no-reply`, `donotreply`, `do not reply`, `bulk email`, `email digest`, `end user digest`, `newsletter`, `unsubscribe`, `started a new conversation`, `new posts from`
 
+**Note on hardcoded fallback defaults:** When `scoring.json` has not been created yet (before running `cp scoring.json.example scoring.json`), the skill uses built-in default bulk patterns that include additional entries beyond those in `scoring.json.example`: `ezcater`, `good morning accenture`. These are active on a fresh install and can cause the `"bulk"` signal to appear for emails from those senders. Run `node outlook.js tune --save` to write the effective configuration to `scoring.json` and see the complete active set.
+
 When the `"bulk"` signal appears in `importance_signals`, the email was unread but classified as automated/newsletter — the unread bonus was suppressed.
 
 ---
