@@ -9,13 +9,12 @@ The `digest` subcommand scores each of today's inbox messages and returns result
 | Range | Meaning |
 |-------|---------|
 | 0 | No signals fired — email is read AND sender is not a channel AND no urgency keywords |
-| 1–20 | Low importance — keyword signal only, or channel email with keywords |
-| 21–40 | Medium — unread channel email, or keyword-heavy read email |
-| 41–60 | High — unread human email, no keywords |
-| 61–80 | Very high — unread human + keywords, or unread human + high importance |
-| 81–100 | Critical — high importance + unread + keywords |
+| 1–19 | Low importance — keyword signal only, or channel email with keywords |
+| 20–39 | Medium — unread channel email, or keyword-heavy read email |
+| 40–59 | High — unread human email, no keywords |
+| 60–100 | Critical — any combination reaching 60+ (unread human + keywords, or high importance, etc.) |
 
-Theoretical maximum is 100 (unread_human 40 + high_importance 40 + keyword_max 20).
+These ranges align with the `tune` subcommand's five-tier system: Tier 1 (1–19), Tier 2 (20–39), Tier 3 (40–59), Tier 4 (60+). Theoretical maximum is 100 (unread_human 40 + high_importance 40 + keyword_max 20).
 
 ---
 
