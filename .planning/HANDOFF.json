@@ -1,68 +1,36 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-10T21:31:46.651Z",
-  "phase": "02",
-  "phase_name": "search-operation",
-  "phase_dir": ".planning/phases/02-search-operation",
-  "plan": 2,
-  "task": 1,
-  "total_tasks": 1,
+  "timestamp": "2026-04-12T16:45:36.576Z",
+  "phase": "05",
+  "phase_name": "skill-packaging",
+  "phase_dir": ".planning/phases/05-skill-packaging",
+  "plan": 0,
+  "task": 0,
+  "total_tasks": 0,
   "status": "paused",
   "completed_tasks": [
-    {"id": "02-01-task-1", "name": "Create policy-search.json and update infrastructure (run.js, session.js)", "status": "done", "commit": "5429cea"},
-    {"id": "02-01-task-2", "name": "Implement lib/search.js and wire into outlook.js", "status": "done", "commit": "3bf7a7e"}
+    {"id": "phase-04", "name": "Phase 04: Daily Digest Operation", "status": "done", "commit": "58ddeee"},
+    {"id": "quick-260412-hek", "name": "Externalize scoring config to scoring.json + tune subcommand", "status": "done", "commit": "56fba2e"},
+    {"id": "privacy-fix", "name": "Gitignore scoring.json and outlook-ui.md, add example templates", "status": "done", "commit": "99f3b61"}
   ],
   "remaining_tasks": [
-    {"id": "02-02-task-1", "name": "Live search verification against real Outlook (human checkpoint)", "status": "blocked", "blocker": "Chrome profile corruption must be fixed first; run.js --profile change must be reverted; snapshot parsing must be fixed"}
+    {"id": "phase-05", "name": "Phase 05: Skill Packaging", "status": "not_started"}
   ],
   "blockers": [
     {
-      "description": "run.js was changed to use --profile OUTLOOK_BROWSER_PROFILE instead of --session-name. This caused agent-browser to treat the user's real Chrome Profile 1 as a user data directory, creating Profile 1/Default/ and corrupting Chrome. MUST be reverted to --session-name before any further runs.",
+      "description": "CR-01 (Advisory): Session URL check in lib/digest.js and lib/read.js — isLoginUrl() is called on raw batch stdout that may contain more than just the URL line. Risk: login redirect may go undetected if the URL line is embedded in other output. Discovered during Phase 4 code review.",
       "type": "technical",
-      "workaround": "Revert lib/run.js and lib/run.js runEval to use --session-name outlook-skill unconditionally. Remove profileArgs logic entirely."
-    },
-    {
-      "description": "extractMessageRows in lib/search.js walks snapshot.children/snapshot.nodes but agent-browser snapshot structure is flat: {data: {refs: {eN: {role, name}}}}. The tree walk finds nothing. Function needs complete rewrite to search snapshot.data.refs values.",
-      "type": "technical",
-      "workaround": "Diagnostic code already added to search.js showing refs structure. refs role counts visible from test run. Rewrite extractMessageRows to iterate Object.values(snapshot.data.refs) looking for role=listbox by name."
-    },
-    {
-      "description": "User's Chrome Profile 1 was corrupted by --profile change. Profile 1/Default/ directory was created by agent-browser. User cannot find their working Chrome profile with bookmarks.",
-      "type": "human_action",
-      "workaround": "Separate from skill work. User needs to recover Chrome profile. Bookmarks available in snapshots: ~/Library/Application Support/Google/Chrome/Snapshots/145.0.7632.160/Profile 1/Bookmarks (96KB, Mar 2025)"
+      "workaround": "Current implementation works in practice; fix recommended before Phase 5 or as a quick task"
     }
   ],
-  "human_actions_pending": [
-    {
-      "action": "Resolve Chrome profile situation so user has a working browser before attempting live Outlook verification",
-      "context": "User's Chrome Profile 1 was corrupted when run.js was changed to pass --profile to agent-browser. Neither Chrome profile (Gabe / Your Chrome) shows correct bookmarks or pre-today history.",
-      "blocking": false
-    },
-    {
-      "action": "Run node outlook.js auth after run.js is reverted to --session-name, to establish a fresh skill session",
-      "context": "With --session-name outlook-skill, the skill uses an isolated session. First run needs interactive auth (headed browser) to log in to myemail.accenture.com.",
-      "blocking": true
-    },
-    {
-      "action": "Complete 5-test live verification per plan 02-02",
-      "context": "Tests: basic search, zero results, --limit, missing query, KQL operator. All must pass before phase 2 is complete.",
-      "blocking": true
-    }
-  ],
+  "human_actions_pending": [],
   "decisions": [
-    {"decision": "policy-search.json needs getbyrole in allow list", "rationale": "agent-browser find command uses getbyrole internally; was denied by policy during first live test", "phase": "02"},
-    {"decision": "outlook.js auto-loads .env via inline parser", "rationale": "no dotenv dependency; user shouldn't need to source .env manually before every run", "phase": "02"},
-    {"decision": "run.js --profile change was a mistake — REVERT to --session-name", "rationale": "--profile with existing Chrome profile path corrupts Chrome; agent-browser treats it as user data dir not profile selector", "phase": "02"},
-    {"decision": "snapshot structure is flat refs dict, not nested tree", "rationale": "confirmed from diagnostic output: {data: {refs: {eN: {role, name}}}} — extractMessageRows must be rewritten", "phase": "02"}
+    {"decision": "scoring.json and references/outlook-ui.md are now gitignored", "rationale": "scoring.json contains company-specific bulk patterns; outlook-ui.md evidence section contains real names, email addresses, message content, and sensitive metadata", "phase": "quick"},
+    {"decision": "External scoring config via scoring.json with hardcoded fallback", "rationale": "Bulk patterns and urgency keywords are personal preferences that differ per user; externalized so users can calibrate without editing source", "phase": "04"},
+    {"decision": "tune subcommand for scoring calibration", "rationale": "Runs 25-query inbox sampling to evaluate tier distribution; helps new users calibrate scoring.json on install", "phase": "04"},
+    {"decision": "Unread bonus: +40 human senders, +20 channel/system senders, 0 bulk senders", "rationale": "Bulk newsletters being unread is not a signal of importance; channels should score lower than direct human communication", "phase": "04"}
   ],
-  "uncommitted_files": [
-    "lib/run.js — needs REVERT of --profile change before committing",
-    "lib/search.js — diagnostic code must be removed; extractMessageRows must be rewritten for flat refs",
-    "outlook.js — .env auto-loader (keep this change)",
-    "policy-search.json — getbyrole added (keep this change)",
-    ".gitignore — new file (keep)",
-    ".env — new file (keep, already gitignored)"
-  ],
-  "next_action": "1. Revert run.js to --session-name (remove profileArgs logic). 2. Rewrite extractMessageRows to use snapshot.data.refs flat dict. 3. Remove diagnostic code from search.js. 4. Run node outlook.js auth to establish session. 5. Run 5 verification tests.",
-  "context_notes": "Wave 1 (02-01) is fully committed and clean. All remaining uncommitted changes are debugging artifacts or fixes needed. The snapshot structure discovery is the key unresolved technical problem — refs is a flat {eN: {role, name}} dict, not a tree. We can see 'Exit search' button and multiple 'Select a message' checkboxes in refs confirming search works, but parsing needs fixing. Chrome profile issue is a side-effect of our --profile mistake and is unrelated to the core skill work."
+  "uncommitted_files": [".planning/ROADMAP.md", ".planning/STATE.md"],
+  "next_action": "Run /gsd-execute-phase 5 to begin Phase 5 skill packaging",
+  "context_notes": "Phase 4 is fully verified and reviewed. Two quick tasks completed post-phase: (1) externalized scoring criteria to scoring.json with tune subcommand for calibration; (2) gitignored sensitive files (scoring.json, outlook-ui.md) and added example templates (.env.example, scoring.json.example, references/outlook-ui.example.md). Phase 5 writes SKILL.md and all reference docs for the calling agent. The CR-01 session URL check advisory should be addressed either as a quick task before Phase 5 or noted in Phase 5 documentation."
 }
