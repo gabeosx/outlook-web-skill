@@ -1,0 +1,25 @@
+{
+  "scoring_weights": {
+    "unread_human": 40,
+    "unread_channel": 20,
+    "high_importance_prefix": 40,
+    "keyword_per_match": 5,
+    "keyword_max": 20
+  },
+  "urgency_keywords": [
+    "urgent", "asap", "action required", "immediate", "deadline",
+    "due today", "overdue", "eod", "eow", "critical", "expires", "time-sensitive",
+    "itinerary", "booking confirmation", "reservation", "check-in", "travel alert"
+  ],
+  "bulk_patterns": [
+    "no reply", "noreply", "no-reply", "donotreply", "do not reply",
+    "bulk email", "email digest", "end user digest", "newsletter", "unsubscribe",
+    "started a new conversation", "new posts from",
+    "ezcater",
+    "good morning accenture"
+  ],
+  "channel_words": [
+    "group", "team", "circle", "community", "center", "online", "network",
+    "office", "alliance", "program", "service", "digest", "erg", "management"
+  ]
+}
