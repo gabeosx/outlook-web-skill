@@ -1,4 +1,5 @@
 {
+  "_comment": "Copy this file to scoring.json and customize for your inbox. Run 'node outlook.js tune' to evaluate your configuration.",
   "scoring_weights": {
     "unread_human": 40,
     "unread_channel": 20,
@@ -14,9 +15,7 @@
   "bulk_patterns": [
     "no reply", "noreply", "no-reply", "donotreply", "do not reply",
     "bulk email", "email digest", "end user digest", "newsletter", "unsubscribe",
-    "started a new conversation", "new posts from",
-    "ezcater",
-    "company-newsletter"
+    "started a new conversation", "new posts from"
   ],
   "channel_words": [
     "group", "team", "circle", "community", "center", "online", "network",

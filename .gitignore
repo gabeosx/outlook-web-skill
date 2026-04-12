@@ -1,5 +1,11 @@
-# Environment variables (may contain personal Outlook URL and browser paths)
+# Environment variables (contain personal Outlook URL and browser paths)
 .env
+
+# User-calibrated scoring config (may contain company/personal-specific patterns)
+scoring.json
+
+# Tenant-specific UI reference (capture sessions may contain personal data)
+references/outlook-ui.md
 
 # Browser session profile (contains auth cookies — never commit)
 .outlook-web-profile/
