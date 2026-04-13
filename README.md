@@ -66,7 +66,17 @@ Uses [`@vercel/agent-browser`](https://github.com/vercel-labs/agent-browser) to 
 
 ## Setup
 
-### 1. Clone and configure
+### 1. Install and configure
+
+**Via npx skills (recommended):**
+
+```bash
+npx skills add gabeosx/outlook-web-skill
+cd .claude/skills/outlook-web-skill
+cp .env.example .env
+```
+
+**Via git clone:**
 
 ```bash
 git clone https://github.com/gabeosx/outlook-web-skill
@@ -99,6 +109,8 @@ cp scoring.json.example scoring.json
 Edit `scoring.json` to add urgency keywords relevant to your work (project names, deadlines, key contacts). The defaults are a reasonable starting point. See [Digest Scoring](#digest-scoring) for details.
 
 ### 3. Authenticate
+
+Run this from the directory where you installed the skill:
 
 ```bash
 node outlook.js auth
