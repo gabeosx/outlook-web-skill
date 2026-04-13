@@ -21,6 +21,8 @@ The tradeoff is that it's tightly coupled to the Outlook web UI. If Microsoft re
 - Read the full body, subject, recipients, and attachments of any email
 - Return a prioritized digest of today's inbox sorted by importance score
 - Recalibrate the scoring algorithm when rankings seem off
+- Fetch Microsoft Teams activity feed, @mentions, and unread chats
+- Get AI-generated summaries of emails and Teams messages from Copilot in Teams
 
 **What it will never do:** send, reply, delete, move, flag, forward, or accept/decline anything. This is enforced at the browser layer with an action policy — not just by convention.
 
@@ -267,6 +269,90 @@ Samples your inbox across 25 queries and grades the current scoring config. Retu
 
 ---
 
+### `teams` — Microsoft Teams activity
+
+```bash
+node outlook.js teams [--mentions] [--unread] [--limit <n>]
+```
+
+Fetches activity from Microsoft Teams web. Three modes:
+
+```bash
+node outlook.js teams                    # all activity feed items
+node outlook.js teams --mentions         # @mentions only
+node outlook.js teams --unread           # unread chats only
+node outlook.js teams --limit 10         # limit results
+```
+
+**Response (activity/mentions mode):**
+
+```json
+{
+  "operation": "teams",
+  "status": "ok",
+  "mode": "activity",
+  "results": [
+    {
+      "sender": "Smith, Alice",
+      "channel": "Project Alpha",
+      "preview": "Can you review the proposal by EOD?",
+      "time": "2h ago",
+      "type": "mention"
+    }
+  ],
+  "count": 1,
+  "error": null
+}
+```
+
+Type values: `mention`, `reply`, `reaction`, `message`, `notification`.
+
+Uses the same Entra SSO session as email commands. Set `TEAMS_BASE_URL` in `.env` if your org uses a custom Teams URL (defaults to `https://teams.microsoft.com`).
+
+---
+
+### `copilot-summary` — AI summary from Copilot in Teams
+
+```bash
+node outlook.js copilot-summary [--type email|teams|both] [--since "<date>"]
+```
+
+Sends a focused prompt to Copilot in Teams and captures the AI-generated summary. Useful as a high-level briefing that complements the raw `digest` and `teams` data.
+
+```bash
+node outlook.js copilot-summary                          # email + teams, last 24h
+node outlook.js copilot-summary --type email              # email only
+node outlook.js copilot-summary --type teams              # teams only
+node outlook.js copilot-summary --since "April 10, 2026"  # custom window
+node outlook.js copilot-summary --prompt "Custom prompt"  # override template
+```
+
+**Response:**
+
+```json
+{
+  "operation": "copilot-summary",
+  "status": "ok",
+  "type": "both",
+  "raw_response": "1. Alice Smith | Q2 Budget | Apr 12 | Needs approval | yes - approve\n...",
+  "items": [
+    {
+      "sender": "Alice Smith",
+      "subject": "Q2 Budget",
+      "date": "Apr 12",
+      "summary": "Needs approval",
+      "action": "yes - approve"
+    }
+  ],
+  "count": 1,
+  "error": null
+}
+```
+
+> **Note:** `raw_response` always contains Copilot's full text. `items` is a best-effort parse — Copilot doesn't always comply with the pipe-delimited format, so fall back to `raw_response` when needed. Generation takes 10-30 seconds.
+
+---
+
 ## Response envelope
 
 Every subcommand writes a single JSON line to stdout:
@@ -408,11 +494,13 @@ This means even if a prompt injection in an email body instructed the assistant 
 
 ## Limitations
 
-- **UI coupling** — relies on Outlook web's ARIA structure and CSS selectors. Microsoft UI updates may require selector maintenance.
+- **UI coupling** — relies on Outlook and Teams web ARIA structure. Microsoft UI updates may require selector maintenance.
 - **Subject field** — the Outlook list view doesn't expose subject and sender separately; `search` and `digest` results have an empty `subject`. Use `read` to get the actual subject.
 - **"Today" group** — `digest` reads only the Today group visible in the current inbox view. If your inbox is heavily filtered or grouped differently, results may be incomplete.
-- **Multi-tenant** — tested on a single Outlook tenant. Different organizations may have slightly different UI configurations.
+- **Multi-tenant** — tested on a single Outlook/Teams tenant. Different organizations may have slightly different UI configurations.
 - **Attachments** — names are listed but content is not downloaded.
+- **Teams ARIA** — Teams web's accessibility tree varies by version. The `teams` subcommand extracts what it can from listitem/option elements; some activity items may not parse cleanly.
+- **Copilot availability** — `copilot-summary` requires Copilot to be enabled for your Teams tenant. Generation takes 10-30 seconds and Copilot may truncate at ~25 items.
 
 ---
 
@@ -426,11 +514,13 @@ lib/
   read.js               Full email reader
   digest.js             Inbox digest with scoring
   tune.js               Scoring calibration
+  teams.js              Teams activity feed, mentions, unread chats
+  copilot.js            Copilot-in-Teams summary generation
   output.js             JSON envelope helpers
   run.js                agent-browser wrapper with action policy
 policy-auth.json        Action allowlist for auth operations
 policy-read.json        Action allowlist for read operations
-policy-search.json      Action allowlist for search/digest operations
+policy-search.json      Action allowlist for search/digest/teams/copilot operations
 scoring.json.example    Default scoring config — copy to scoring.json
 SKILL.md                Claude Code skill descriptor
 references/
