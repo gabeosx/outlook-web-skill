@@ -18,12 +18,18 @@ for (const line of envFile.split('\n')) {
 }
 
 // ── Step 1: Env var validation (before argv, before any browser) ──
-const REQUIRED_ENV = ['OUTLOOK_BASE_URL', 'OUTLOOK_BROWSER_PATH', 'OUTLOOK_BROWSER_PROFILE'];
-for (const key of REQUIRED_ENV) {
+// Browser path and profile are always required; base URLs are command-specific
+const ALWAYS_REQUIRED = ['OUTLOOK_BROWSER_PATH', 'OUTLOOK_BROWSER_PROFILE'];
+for (const key of ALWAYS_REQUIRED) {
   if (!process.env[key]) {
     outputError('startup', 'INVALID_ARGS', `Missing required env var: ${key}`);
-    // outputError exits — code below this loop never runs for missing vars
   }
+}
+// OUTLOOK_BASE_URL required for email commands; TEAMS_BASE_URL has a default
+const emailCommands = ['auth', 'search', 'read', 'digest', 'tune'];
+const peekCmd = process.argv[2];
+if (emailCommands.includes(peekCmd) && !process.env.OUTLOOK_BASE_URL) {
+  outputError('startup', 'INVALID_ARGS', 'Missing required env var: OUTLOOK_BASE_URL');
 }
 
 // ── Step 2: Normalize tilde in path env vars ──
@@ -35,14 +41,16 @@ process.env.OUTLOOK_BROWSER_PROFILE = expandTilde(process.env.OUTLOOK_BROWSER_PR
 
 // ── Step 3: Extract allowed domain for SAFE-02 ──
 let allowedDomain;
-try {
-  allowedDomain = new URL(process.env.OUTLOOK_BASE_URL).hostname;
-} catch {
-  outputError('startup', 'INVALID_ARGS', `OUTLOOK_BASE_URL is not a valid URL: ${process.env.OUTLOOK_BASE_URL}`);
+if (process.env.OUTLOOK_BASE_URL) {
+  try {
+    allowedDomain = new URL(process.env.OUTLOOK_BASE_URL).hostname;
+  } catch {
+    outputError('startup', 'INVALID_ARGS', `OUTLOOK_BASE_URL is not a valid URL: ${process.env.OUTLOOK_BASE_URL}`);
+  }
 }
 
 // ── Step 4: Subcommand dispatch ──
-const VALID_COMMANDS = ['auth', 'search', 'read', 'digest', 'tune'];
+const VALID_COMMANDS = ['auth', 'search', 'read', 'digest', 'tune', 'teams', 'copilot-summary'];
 const cmd = process.argv[2];
 
 if (!cmd || !VALID_COMMANDS.includes(cmd)) {
@@ -67,6 +75,12 @@ switch (cmd) {
     break;
   case 'tune':
     require('./lib/tune').runTune();
+    break;
+  case 'teams':
+    require('./lib/teams').runTeams();
+    break;
+  case 'copilot-summary':
+    require('./lib/copilot').runCopilotSummary();
     break;
 }
 

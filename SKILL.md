@@ -1,12 +1,12 @@
 ---
 name: outlook-web
-description: Read-only access to Outlook web email. Use when the user needs to search emails, read an email, or get a prioritized digest of today's inbox. Triggers include "check my email", "find email from", "read that email", "what's in my inbox today", or any request to access, search, or summarize Outlook email. NEVER use for sending, replying, deleting, or any write operation.
+description: Read-only access to Outlook web email and Microsoft Teams. Use when the user needs to search emails, read an email, get a prioritized digest of today's inbox, check Teams activity/mentions, or get a Copilot-generated summary. Triggers include "check my email", "find email from", "read that email", "what's in my inbox today", "check Teams", "Teams mentions", "copilot summary", or any request to access, search, or summarize Outlook email or Teams messages. NEVER use for sending, replying, deleting, or any write operation.
 allowed-tools: Bash(node outlook.js:*)
 ---
 
 # Outlook Web Skill
 
-Reads the user's Outlook web inbox via a managed Chrome session — no Microsoft Graph API, no app registration. Invoke via `node outlook.js <subcommand>` from the skill root directory. This skill will NEVER send, delete, move, reply to, forward, flag, unflag, accept, or decline any email or calendar item.
+Reads the user's Outlook web inbox and Microsoft Teams via a managed Chrome session — no Microsoft Graph API, no app registration. Invoke via `node outlook.js <subcommand>` from the skill root directory. This skill will NEVER send, delete, move, reply to, forward, flag, unflag, accept, or decline any email, Teams message, or calendar item.
 
 ## Safety Constraint: Read-Only
 
@@ -210,14 +210,103 @@ Samples the inbox across multiple queries and grades the current scoring configu
 }
 ```
 
+### teams
+
+```bash
+node outlook.js teams [--mentions] [--unread] [--limit <n>]
+```
+
+Fetches Microsoft Teams activity from `teams.microsoft.com` (web). Three modes:
+
+- **(default)** — Activity feed: all recent notifications (mentions, replies, reactions, messages)
+- `--mentions` — Filter to @mentions only
+- `--unread` — Unread chats only (navigates to Chat view)
+- `--limit <n>` — Maximum results (default: 30)
+
+```json
+{
+  "operation": "teams",
+  "status": "ok",
+  "mode": "activity",
+  "results": [
+    {
+      "sender": "Smith, Alice",
+      "channel": "Project Alpha",
+      "preview": "Can you review the proposal by EOD?",
+      "time": "2h ago",
+      "type": "mention"
+    }
+  ],
+  "count": 1,
+  "error": null
+}
+```
+
+**Type values:** `mention`, `reply`, `reaction`, `message`, `notification`
+
+For `--unread` mode, results have a different shape:
+```json
+{
+  "name": "Smith, Alice",
+  "preview": "Latest message preview...",
+  "time": "10:30 AM",
+  "has_unread": true
+}
+```
+
+**Note:** Teams uses the same Entra SSO as Outlook. If auth fails, run `node outlook.js auth` and ensure your browser profile has Teams cookies. Set `TEAMS_BASE_URL` in `.env` if your org uses a custom Teams URL (defaults to `https://teams.microsoft.com`).
+
+---
+
+### copilot-summary
+
+```bash
+node outlook.js copilot-summary [--type email|teams|both] [--since "<date>"] [--prompt "<custom>"]
+```
+
+Navigates to Copilot in Teams web, sends a focused prompt, and captures the AI-generated summary response. This is the only subcommand that interacts with Copilot — all other subcommands scrape the UI directly.
+
+- `--type` — What to summarize: `email`, `teams`, or `both` (default: `both`)
+- `--since` — Time window: `"April 10, 2026"`, `"yesterday"`, etc. (default: last 24 hours)
+- `--prompt` — Override with a custom Copilot prompt (replaces the built-in template)
+
+```json
+{
+  "operation": "copilot-summary",
+  "status": "ok",
+  "type": "both",
+  "raw_response": "EMAILS:\n1. Alice Smith | Q2 Budget Review | Apr 12 | Needs approval by EOD | yes - approve\n...",
+  "items": [
+    {
+      "sender": "Alice Smith",
+      "subject": "Q2 Budget Review",
+      "date": "Apr 12",
+      "summary": "Needs approval by EOD",
+      "action": "yes - approve"
+    }
+  ],
+  "count": 1,
+  "error": null
+}
+```
+
+**Critical notes:**
+- `raw_response` always contains the full Copilot output text — use this if `items` parsing misses anything.
+- `items` is a best-effort parse of Copilot's pipe-delimited format. Copilot does not always comply with the format — fall back to `raw_response`.
+- Copilot generation takes 10-30 seconds. The skill polls up to 6 times (5s each) waiting for completion.
+- If the Researcher plugin auto-attaches, the skill attempts to remove it (it causes 5-10 min delays and crashes).
+- Copilot truncates at ~25 items. For large time windows, use two separate calls with split date ranges.
+
+---
+
 ## Error Codes
 
 | Code | When emitted | Meaning |
 |------|-------------|---------|
 | `INVALID_ARGS` | startup, search, read | Missing env var, missing subcommand, or missing required argument |
-| `SESSION_INVALID` | search, read, digest | Session expired mid-operation — run `auth`, then retry the original operation |
+| `SESSION_INVALID` | search, read, digest, teams, copilot-summary | Session expired mid-operation — run `auth`, then retry the original operation |
 | `AUTH_REQUIRED` | session check | Session absent (per REQUIREMENTS; in practice `SESSION_INVALID` is the operational code) |
-| `OPERATION_FAILED` | read, digest, auth | Browser error, timeout, or empty snapshot — retry once; if still fails, surface `error.message` to user |
+| `OPERATION_FAILED` | read, digest, auth, teams, copilot-summary | Browser error, timeout, or empty snapshot — retry once; if still fails, surface `error.message` to user |
 | `MESSAGE_NOT_FOUND` | read only | Email with given `id` not found in search results — pass `--query` flag with the original search query |
 
 For full recovery decision trees, read `references/error-recovery.md`.

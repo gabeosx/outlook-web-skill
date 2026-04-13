@@ -3,9 +3,9 @@
 
 **Outlook Web Skill**
 
-A Claude Code skill (or set of skills) that gives a personal assistant Claude Code instance read-only access to Outlook web. It uses the `@vercel/agent-browser` npm package to control a browser via CLI, navigates to the Outlook web UI, handles authentication state detection, and returns structured JSON data to the calling agent.
+A Claude Code skill that gives a personal assistant Claude Code instance read-only access to Outlook web email and Microsoft Teams. It uses the `@vercel/agent-browser` npm package to control a browser via CLI, navigates to Outlook and Teams web UIs, handles authentication state detection, and returns structured JSON data to the calling agent. Also supports getting AI-generated summaries from Copilot in Teams.
 
-**Core Value:** A personal assistant Claude Code instance can reliably read and search the user's Outlook inbox without ever sending, deleting, or mutating anything.
+**Core Value:** A personal assistant Claude Code instance can reliably read and search the user's Outlook inbox and Teams messages without ever sending, deleting, or mutating anything.
 
 ### Constraints
 

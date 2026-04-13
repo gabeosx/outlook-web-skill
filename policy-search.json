@@ -16,6 +16,10 @@
     "press",
     "eval",
     "evaluate",
-    "getbyrole"
+    "getbyrole",
+    "getbytext",
+    "getbylabel",
+    "getbyplaceholder",
+    "keyboard"
   ]
 }
