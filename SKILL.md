@@ -1,12 +1,12 @@
 ---
 name: outlook-web
-description: Read-only access to Outlook web email. Use when the user needs to search emails, read an email, or get a prioritized digest of today's inbox. Triggers include "check my email", "find email from", "read that email", "what's in my inbox today", or any request to access, search, or summarize Outlook email. NEVER use for sending, replying, deleting, or any write operation.
+description: Read-only access to Outlook web email and calendar. Use when the user needs to search emails, read an email, get a prioritized digest of today's inbox, check calendar events, find a specific meeting, or search upcoming meetings. Triggers include "check my email", "find email from", "read that email", "what's in my inbox today", "what's on my calendar", "do I have any meetings today", "find the standup meeting", or any request to access, search, or summarize Outlook email or calendar. NEVER use for sending, replying, deleting, accepting, declining, or any write operation.
 allowed-tools: Bash(node outlook.js:*)
 ---
 
 # Outlook Web Skill
 
-Reads the user's Outlook web inbox via a managed Chrome session — no Microsoft Graph API, no app registration. Invoke via `node outlook.js <subcommand>` from the skill root directory. This skill will NEVER send, delete, move, reply to, forward, flag, unflag, accept, or decline any email or calendar item.
+Reads the user's Outlook web inbox and calendar via a managed Chrome session — no Microsoft Graph API, no app registration. Invoke via `node outlook.js <subcommand>` from the skill root directory. This skill will NEVER send, delete, move, reply to, forward, flag, unflag, accept, or decline any email or calendar item.
 
 ## Safety Constraint: Read-Only
 
@@ -210,6 +210,135 @@ Samples the inbox across multiple queries and grades the current scoring configu
 }
 ```
 
+---
+
+### calendar
+
+```bash
+node outlook.js calendar [--days <n>]
+```
+
+- `--days <n>` — Number of calendar days ahead to include (default: 7). `--days 1` returns today only; `--days 30` returns the next month.
+
+Lists upcoming calendar events within the requested time window, sorted chronologically by `start_time`. See `references/calendar-events.md` for complete field documentation.
+
+```json
+{
+  "operation": "calendar",
+  "status": "ok",
+  "results": [
+    {
+      "id": "{\"subject\":\"Weekly Standup\",\"start_time\":\"2026-04-14T09:00:00.000Z\"}",
+      "subject": "Weekly Standup",
+      "organizer": "Smith, Alice",
+      "start_time": "2026-04-14T09:00:00.000Z",
+      "end_time": "2026-04-14T09:30:00.000Z",
+      "duration_minutes": 30,
+      "location": "Microsoft Teams Meeting",
+      "is_online_meeting": true,
+      "is_all_day": false,
+      "is_recurring": true,
+      "response_status": "accepted"
+    }
+  ],
+  "count": 1,
+  "error": null
+}
+```
+
+**Critical notes:**
+- `id` is a composite key (`JSON.stringify({ subject, start_time })`). Pass it directly to `calendar-read` without modification — do not construct IDs manually.
+- `subject` is always populated for calendar events (unlike email `search` results where `subject` is always empty).
+- Events are sorted chronologically by `start_time` ascending. All-day events sort before timed events on the same date.
+- Empty results (`results: [], count: 0`) is not an error — it means no events were found in the calendar view for the requested window.
+- Read `references/calendar-events.md` for `response_status` values, `--days` flag semantics, and event ID limitations.
+
+---
+
+### calendar-read
+
+```bash
+node outlook.js calendar-read <event-id>
+```
+
+- `<event-id>` — Composite event ID from a prior `calendar` or `calendar-search` result (required). This is the `id` field value — pass it unchanged.
+
+Fetches full event details by clicking the matching event in the calendar view and parsing the popup card. Returns D-10 schema including `meeting_link`, `body_text`, and `attendees`. See `references/calendar-events.md` for complete field documentation.
+
+```json
+{
+  "operation": "calendar-read",
+  "status": "ok",
+  "results": {
+    "id": "{\"subject\":\"Weekly Standup\",\"start_time\":\"2026-04-14T09:00:00.000Z\"}",
+    "subject": "Weekly Standup",
+    "organizer": "Smith, Alice",
+    "start_time": "2026-04-14T09:00:00.000Z",
+    "end_time": "2026-04-14T09:30:00.000Z",
+    "duration_minutes": 30,
+    "location": "Microsoft Teams Meeting",
+    "is_online_meeting": true,
+    "meeting_link": "https://teams.microsoft.com/l/meetup-join/19%3a...",
+    "is_all_day": false,
+    "is_recurring": true,
+    "response_status": "unknown",
+    "attendees": [],
+    "body_text": "Join the weekly standup.\n\nAgenda:\n1. Status updates\n2. Blockers"
+  },
+  "error": null
+}
+```
+
+**Critical notes:**
+- `results` is a **single object** (not an array) for `calendar-read`.
+- `response_status` is always `"unknown"` for `calendar-read` — the popup card does not expose the ShowAs field. Use `calendar` listing to get `response_status`.
+- `attendees` is always `[]` — the popup shows only aggregate counts. The full attendee list is not accessible without navigating to the full event page.
+- `meeting_link` contains the Teams or Zoom join URL extracted from the event body, or `null` if none was found.
+- Read `references/calendar-events.md` for full schema details and natural language templates.
+
+---
+
+### calendar-search
+
+```bash
+node outlook.js calendar-search "<query>" [--limit <n>]
+```
+
+- `<query>` — Search query string (required). Use plain keywords or `subject:`, `before:`, `after:` operators. See `references/calendar-events.md` for supported operators.
+- `--limit <n>` — Maximum results to return (default: 20).
+
+Searches calendar events using the Outlook search combobox, navigating to the calendar view first for best-effort calendar scoping. Results use the same schema as `calendar` listing. See `references/calendar-events.md` for operator documentation.
+
+```json
+{
+  "operation": "calendar-search",
+  "status": "ok",
+  "results": [
+    {
+      "id": "{\"subject\":\"Q2 Planning\",\"start_time\":\"2026-04-21T14:00:00.000Z\"}",
+      "subject": "Q2 Planning",
+      "organizer": "Jones, Bob",
+      "start_time": "2026-04-21T14:00:00.000Z",
+      "end_time": "2026-04-21T15:00:00.000Z",
+      "duration_minutes": 60,
+      "location": null,
+      "is_online_meeting": false,
+      "is_all_day": false,
+      "is_recurring": false,
+      "response_status": "unknown"
+    }
+  ],
+  "count": 1,
+  "error": null
+}
+```
+
+**Critical notes:**
+- Zero results (`results: [], count: 0`) is not an error.
+- `response_status` may be `"unknown"` for many results — the search results view may not show the ShowAs indicator for all events.
+- Whether results are exclusively calendar events is not guaranteed — results are filtered to ARIA patterns that match calendar event buttons (year in accessible name or "all day event").
+- Read `references/calendar-events.md` for supported search operators and limitations vs. email KQL syntax.
+
 ## Error Codes
 
 | Code | When emitted | Meaning |
@@ -219,6 +348,7 @@ Samples the inbox across multiple queries and grades the current scoring configu
 | `AUTH_REQUIRED` | session check | Session absent (per REQUIREMENTS; in practice `SESSION_INVALID` is the operational code) |
 | `OPERATION_FAILED` | read, digest, auth | Browser error, timeout, or empty snapshot — retry once; if still fails, surface `error.message` to user |
 | `MESSAGE_NOT_FOUND` | read only | Email with given `id` not found in search results — pass `--query` flag with the original search query |
+| `EVENT_NOT_FOUND` | calendar-read only | Event with given `id` not found in calendar view — run `node outlook.js calendar` to get fresh event IDs |
 
 For full recovery decision trees, read `references/error-recovery.md`.
 
@@ -229,4 +359,5 @@ For full recovery decision trees, read `references/error-recovery.md`.
 | `references/kql-syntax.md` | **BEFORE constructing any search query** — covers all supported operators, date format, free-text, AND/OR/NOT |
 | `references/error-recovery.md` | When an error code is returned — step-by-step recovery paths for each code |
 | `references/digest-signals.md` | When explaining digest results to the user — scoring weights, all signal values, natural language templates |
+| `references/calendar-events.md` | When explaining calendar results to the user — all calendar JSON schemas, `response_status` values, `--days` flag behavior, event ID limitations, and search operator reference |
 | `references/outlook-ui.md` | NOT needed for invocation — internal ARIA selector documentation for skill maintainers |
