@@ -1,36 +1,46 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-12T16:45:36.576Z",
-  "phase": "05",
-  "phase_name": "skill-packaging",
-  "phase_dir": ".planning/phases/05-skill-packaging",
-  "plan": 0,
-  "task": 0,
-  "total_tasks": 0,
+  "timestamp": "2026-04-14T22:27:48.596Z",
+  "phase": "06",
+  "phase_name": "add-outlook-calendar-capabilities-similar-to-the-current-mai",
+  "phase_dir": ".planning/phases/06-add-outlook-calendar-capabilities-similar-to-the-current-mai",
+  "plan": 4,
+  "task": null,
+  "total_tasks": null,
   "status": "paused",
   "completed_tasks": [
-    {"id": "phase-04", "name": "Phase 04: Daily Digest Operation", "status": "done", "commit": "58ddeee"},
-    {"id": "quick-260412-hek", "name": "Externalize scoring config to scoring.json + tune subcommand", "status": "done", "commit": "56fba2e"},
-    {"id": "privacy-fix", "name": "Gitignore scoring.json and outlook-ui.md, add example templates", "status": "done", "commit": "99f3b61"}
+    {"id": 1, "name": "06-01: ARIA exploration + outlook.js wiring + calendar.js skeleton", "status": "done", "commit": "f5386de"},
+    {"id": 2, "name": "06-02: runCalendar() with parser, scroll-accumulate, --days filtering", "status": "done", "commit": "f5386de"},
+    {"id": 3, "name": "06-03: runCalendarRead() + runCalendarSearch() implementations", "status": "done", "commit": "f5386de"},
+    {"id": 4, "name": "06-04: references/calendar-events.md + SKILL.md documentation", "status": "done", "commit": "75058ab"},
+    {"id": 5, "name": "Live UAT Test 1: calendar listing", "status": "done", "commit": null, "progress": "User ran node outlook.js calendar --days 7 — returned 8 events, all D-07 fields correct"},
+    {"id": 6, "name": "Investigate meeting_link: null for Teams meetings", "status": "done", "commit": "fa792bc", "progress": "Confirmed: popup card truncates body; Teams join URL only in full event page. Decided NOT to auto-fetch."},
+    {"id": 7, "name": "Remove auto-fetch fetchMeetingLinkViaFullEvent, update docs", "status": "done", "commit": null, "progress": "Edited lib/calendar.js and references/calendar-events.md — NOT YET COMMITTED"}
   ],
   "remaining_tasks": [
-    {"id": "phase-05", "name": "Phase 05: Skill Packaging", "status": "not_started"}
+    {"id": 8, "name": "Commit lib/calendar.js and references/calendar-events.md changes", "status": "not_started"},
+    {"id": 9, "name": "Discuss attendee_summary field (user asked, answer given — awaiting decision)", "status": "not_started"},
+    {"id": 10, "name": "Live UAT Test 2: calendar-read re-run (confirm meeting_link: null acceptable)", "status": "not_started"},
+    {"id": 11, "name": "Live UAT Test 3: calendar-search 'standup'", "status": "not_started"},
+    {"id": 12, "name": "Phase approval: user types 'approved'", "status": "not_started"}
   ],
-  "blockers": [
-    {
-      "description": "CR-01 (Advisory): Session URL check in lib/digest.js and lib/read.js — isLoginUrl() is called on raw batch stdout that may contain more than just the URL line. Risk: login redirect may go undetected if the URL line is embedded in other output. Discovered during Phase 4 code review.",
-      "type": "technical",
-      "workaround": "Current implementation works in practice; fix recommended before Phase 5 or as a quick task"
-    }
+  "blockers": [],
+  "human_actions_pending": [
+    {"action": "Run `node outlook.js calendar-read '{\"subject\":\"Team Standup Meeting\",\"start_time\":\"2026-04-14T16:30:00.000Z\"}'` to confirm calendar-read still works after edits", "context": "Last successful calendar-read run was before the fetchMeetingLinkViaFullEvent changes. Need to confirm current state is clean.", "blocking": false},
+    {"action": "Run `node outlook.js calendar-search 'standup'` — Test 3 of UAT", "context": "calendar-search has not been tested live against a real session yet", "blocking": true},
+    {"action": "Type 'approved' to approve the phase after verification passes", "context": "VERIFICATION.md is status=human_needed; code-level checks 8/8 pass; 3 live tests remain", "blocking": true},
+    {"action": "Decide whether to add attendee_summary field to calendar-read output", "context": "attendeeCountText is already parsed (e.g. 'Accepted 5, Didn't respond 3') but not returned. User asked if we can get more data besides meeting_link — agent explained this and offered to add it.", "blocking": false}
   ],
-  "human_actions_pending": [],
   "decisions": [
-    {"decision": "scoring.json and references/outlook-ui.md are now gitignored", "rationale": "scoring.json contains company-specific bulk patterns; outlook-ui.md evidence section contains real names, email addresses, message content, and sensitive metadata", "phase": "quick"},
-    {"decision": "External scoring config via scoring.json with hardcoded fallback", "rationale": "Bulk patterns and urgency keywords are personal preferences that differ per user; externalized so users can calibrate without editing source", "phase": "04"},
-    {"decision": "tune subcommand for scoring calibration", "rationale": "Runs 25-query inbox sampling to evaluate tier distribution; helps new users calibrate scoring.json on install", "phase": "04"},
-    {"decision": "Unread bonus: +40 human senders, +20 channel/system senders, 0 bulk senders", "rationale": "Bulk newsletters being unread is not a signal of importance; channels should score lower than direct human communication", "phase": "04"}
+    {"decision": "No auto-fetch of Teams meeting link via View event click", "rationale": "User: 'I also recommend that we don't automatically try to pull teams links if it requires querying every single meeting'. is_online_meeting: true is the reliable signal instead.", "phase": "06"},
+    {"decision": "Week/day view is correct for calendar listing; search-based listing for time periods not available", "rationale": "User confirmed: 'the calendar search/query doesn't appear to be an option, so I think this is the only real way to do this'", "phase": "06"},
+    {"decision": "meeting_link: null documented as expected behavior for Teams meetings", "rationale": "Outlook popup card shows truncated body; full Teams invite HTML (with anchor) only loads when View event is opened. is_online_meeting: true is the authoritative Teams meeting signal.", "phase": "06"}
   ],
-  "uncommitted_files": [".planning/ROADMAP.md", ".planning/STATE.md"],
-  "next_action": "Run /gsd-execute-phase 5 to begin Phase 5 skill packaging",
-  "context_notes": "Phase 4 is fully verified and reviewed. Two quick tasks completed post-phase: (1) externalized scoring criteria to scoring.json with tune subcommand for calibration; (2) gitignored sensitive files (scoring.json, outlook-ui.md) and added example templates (.env.example, scoring.json.example, references/outlook-ui.example.md). Phase 5 writes SKILL.md and all reference docs for the calling agent. The CR-01 session URL check advisory should be addressed either as a quick task before Phase 5 or noted in Phase 5 documentation."
+  "uncommitted_files": [
+    "lib/calendar.js",
+    "references/calendar-events.md",
+    ".planning/ROADMAP.md"
+  ],
+  "next_action": "Commit the pending changes to lib/calendar.js (removed fetchMeetingLinkViaFullEvent, updated meeting_link comment) and references/calendar-events.md (updated meeting_link field description). Then address the user's attendee_summary question, then run remaining UAT tests.",
+  "context_notes": "Phase 6 all 4 plans executed and all code verified. We are in the UAT/verification phase. Test 1 passed. Test 2 (calendar-read) was run and led to a Teams link investigation — now resolved by documenting the limitation. Tests 2 re-run and Test 3 (calendar-search) are the remaining live checks before phase approval. User asked about getting more data from calendar-read; agent responded that attendeeCountText is captured but not returned (quick win). Awaiting user decision on that."
 }
