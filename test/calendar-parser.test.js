@@ -10,7 +10,13 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { parseCalendarEventName, extractCalendarRows, parseCalendarArgs } = require('../lib/calendar');
+const {
+  parseCalendarEventName,
+  extractCalendarRows,
+  parseCalendarArgs,
+  parseCalendarSearchArgs,
+  extractMeetingLink,
+} = require('../lib/calendar');
 
 // ---------------------------------------------------------------------------
 // parseCalendarArgs
@@ -390,5 +396,93 @@ describe('extractCalendarRows', () => {
       - button "Today"
     `);
     assert.equal(rows.length, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseCalendarSearchArgs
+// ---------------------------------------------------------------------------
+
+describe('parseCalendarSearchArgs', () => {
+  it('parses query positional argument', () => {
+    const result = parseCalendarSearchArgs(['node', 'outlook.js', 'calendar-search', 'meeting topic']);
+    assert.equal(result.query, 'meeting topic');
+  });
+
+  it('returns default limit 20 when --limit is omitted', () => {
+    const result = parseCalendarSearchArgs(['node', 'outlook.js', 'calendar-search', 'meeting topic']);
+    assert.equal(result.limit, 20);
+  });
+
+  it('parses --limit flag correctly', () => {
+    const result = parseCalendarSearchArgs(['node', 'outlook.js', 'calendar-search', 'standup', '--limit', '5']);
+    assert.equal(result.query, 'standup');
+    assert.equal(result.limit, 5);
+  });
+
+  it('parses --limit before query', () => {
+    const result = parseCalendarSearchArgs(['node', 'outlook.js', 'calendar-search', '--limit', '10', 'budget review']);
+    assert.equal(result.query, 'budget review');
+    assert.equal(result.limit, 10);
+  });
+
+  it('ignores invalid --limit value and uses default', () => {
+    const result = parseCalendarSearchArgs(['node', 'outlook.js', 'calendar-search', 'standup', '--limit', 'abc']);
+    assert.equal(result.limit, 20);
+  });
+
+  it('accepts --limit 1', () => {
+    const result = parseCalendarSearchArgs(['node', 'outlook.js', 'calendar-search', 'all hands', '--limit', '1']);
+    assert.equal(result.limit, 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// extractMeetingLink
+// ---------------------------------------------------------------------------
+
+describe('extractMeetingLink', () => {
+  it('extracts Teams meetup-join URL', () => {
+    const link = extractMeetingLink('Click to join: https://teams.microsoft.com/l/meetup-join/abc123%2Fdef/0?context=xyz here');
+    assert.ok(link, 'should return a link');
+    assert.ok(link.includes('teams.microsoft.com'), `got: ${link}`);
+  });
+
+  it('returns null for text with no meeting URL', () => {
+    const link = extractMeetingLink('Please review the attached document before the meeting.');
+    assert.equal(link, null);
+  });
+
+  it('returns null for null input', () => {
+    const link = extractMeetingLink(null);
+    assert.equal(link, null);
+  });
+
+  it('returns null for empty string', () => {
+    const link = extractMeetingLink('');
+    assert.equal(link, null);
+  });
+
+  it('extracts Zoom URL', () => {
+    const link = extractMeetingLink('Join Zoom Meeting https://company.zoom.us/j/95577737751?pwd=abc123 Thanks');
+    assert.ok(link, 'should return a link');
+    assert.ok(link.includes('zoom.us'), `got: ${link}`);
+  });
+
+  it('strips trailing period from Teams URL', () => {
+    const link = extractMeetingLink('Join at https://teams.microsoft.com/l/meetup-join/abc123.');
+    assert.ok(link, 'should return a link');
+    assert.ok(!link.endsWith('.'), `link should not end with period: ${link}`);
+  });
+
+  it('strips trailing comma from Zoom URL', () => {
+    const link = extractMeetingLink('Join at https://company.zoom.us/j/123456,');
+    assert.ok(link, 'should return a link');
+    assert.ok(!link.endsWith(','), `link should not end with comma: ${link}`);
+  });
+
+  it('returns null for a non-Teams/Zoom https URL', () => {
+    const link = extractMeetingLink('See agenda at https://confluence.example.com/pages/meeting');
+    assert.equal(link, null);
   });
 });
