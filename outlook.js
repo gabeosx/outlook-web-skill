@@ -42,7 +42,7 @@ try {
 }
 
 // ── Step 4: Subcommand dispatch ──
-const VALID_COMMANDS = ['auth', 'search', 'read', 'digest', 'tune'];
+const VALID_COMMANDS = ['auth', 'search', 'read', 'digest', 'tune', 'calendar', 'calendar-read', 'calendar-search'];
 const cmd = process.argv[2];
 
 if (!cmd || !VALID_COMMANDS.includes(cmd)) {
@@ -67,6 +67,15 @@ switch (cmd) {
     break;
   case 'tune':
     require('./lib/tune').runTune();
+    break;
+  case 'calendar':
+    require('./lib/calendar').runCalendar();
+    break;
+  case 'calendar-read':
+    require('./lib/calendar').runCalendarRead();
+    break;
+  case 'calendar-search':
+    require('./lib/calendar').runCalendarSearch();
     break;
 }
 
