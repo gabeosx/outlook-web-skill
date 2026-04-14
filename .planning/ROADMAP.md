@@ -108,10 +108,31 @@ Plans:
 - [x] 05-01-PLAN.md — Write SKILL.md and references/kql-syntax.md
 - [x] 05-02-PLAN.md — Write references/error-recovery.md and references/digest-signals.md
 
+### Phase 6: Add Outlook calendar capabilities, similar to the current mailbox capabilities
+
+**Goal:** Three read-only calendar subcommands (calendar, calendar-read, calendar-search) are implemented and documented, mirroring the email subcommand architecture — preceded by mandatory ARIA exploration of the calendar UI
+**Requirements**: CAL-01, CAL-02, CAL-03, CAL-04, CAL-05, CAL-06, CAL-07, CAL-08, CAL-09, CAL-10, CAL-11, CAL-12, CAL-13, CAL-14, CAL-15, CAL-16
+**Depends on:** Phase 5
+**Success Criteria** (what must be TRUE):
+  1. `references/outlook-ui.md` has a `### Calendar` section with confirmed-live ARIA selectors for: calendar navigation URL, event list container, event row role and accessible name format, event detail pane landmark, and stable event ID attribute (or documented absence)
+  2. `node outlook.js calendar --days 7` returns a JSON array of upcoming events sorted chronologically, each with `id`, `subject`, `organizer`, `start_time` (ISO 8601), `end_time`, `duration_minutes`, `location`, `is_online_meeting`, `is_all_day`, `is_recurring`, `response_status`
+  3. `node outlook.js calendar-read <id>` returns full event details including `attendees`, `body_text`, and `meeting_link` (extracted Teams/Zoom URL)
+  4. `node outlook.js calendar-search "<query>"` returns calendar events matching the query using the combobox workflow, with the same schema as `calendar` listing
+  5. `references/calendar-events.md` documents all calendar JSON schemas, response_status values, --days behavior, and event ID limitations
+  6. `SKILL.md` documents all three calendar subcommands with invocation syntax, examples, and reference pointers
+  7. Session expiry during any calendar operation returns `SESSION_INVALID` -- not a crash
+  8. `AGENT_BROWSER_CONTENT_BOUNDARIES=1` applies to calendar-read body text (prompt injection defense)
+**Plans:** 4 plans
+Plans:
+- [ ] 06-01-PLAN.md — ARIA exploration of calendar UI + outlook.js wiring + lib/calendar.js skeleton
+- [ ] 06-02-PLAN.md — Calendar listing: runCalendar() with accessible name parser, scroll-accumulate, --days filtering
+- [ ] 06-03-PLAN.md — Calendar read + calendar search: runCalendarRead() with detail pane extraction, runCalendarSearch() with combobox workflow
+- [ ] 06-04-PLAN.md — Documentation: references/calendar-events.md + SKILL.md update with calendar subcommands
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 0 -> 1 -> 2 -> 3 -> 4 -> 5
+Phases execute in numeric order: 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -120,4 +141,5 @@ Phases execute in numeric order: 0 -> 1 -> 2 -> 3 -> 4 -> 5
 | 2. Search Operation | 2/2 | Complete | 2026-04-10 |
 | 3. Read Operation | 2/2 | Complete | 2026-04-11 |
 | 4. Daily Digest Operation | 2/2 | Complete | 2026-04-12 |
-| 5. Skill Packaging | 0/? | Not started | - |
+| 5. Skill Packaging | 2/2 | Complete | 2026-04-12 |
+| 6. Calendar Capabilities | 0/4 | Not started | - |
