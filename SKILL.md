@@ -258,12 +258,16 @@ Lists upcoming calendar events within the requested time window, sorted chronolo
 ### calendar-read
 
 ```bash
-node outlook.js calendar-read <event-id>
+node outlook.js calendar-read <event-id>           # fast: popup card only
+node outlook.js calendar-read <event-id> --full    # full: attendees + reliable meeting link
 ```
 
 - `<event-id>` — Composite event ID from a prior `calendar` or `calendar-search` result (required). This is the `id` field value — pass it unchanged.
+- `--full` — Navigate to the full event view after the popup. Costs one extra browser round-trip (~10s). Use when you need individual attendee names or a reliable Teams/Zoom meeting link.
 
-Fetches full event details by clicking the matching event in the calendar view and parsing the popup card. Returns D-10 schema including `meeting_link`, `body_text`, and `attendees`. See `references/calendar-events.md` for complete field documentation.
+Fetches full event details by clicking the matching event in the calendar view and parsing the popup card. Returns D-10 schema including `meeting_link`, `attendee_summary`, `attendees`, and `body_text`. See `references/calendar-events.md` for complete field documentation.
+
+**Default response (no `--full`):**
 
 ```json
 {
@@ -278,10 +282,11 @@ Fetches full event details by clicking the matching event in the calendar view a
     "duration_minutes": 30,
     "location": "Microsoft Teams Meeting",
     "is_online_meeting": true,
-    "meeting_link": "https://teams.microsoft.com/l/meetup-join/19%3a...",
+    "meeting_link": null,
     "is_all_day": false,
     "is_recurring": true,
     "response_status": "unknown",
+    "attendee_summary": "Accepted 8, Didn't respond 3",
     "attendees": [],
     "body_text": "Join the weekly standup.\n\nAgenda:\n1. Status updates\n2. Blockers"
   },
@@ -292,8 +297,9 @@ Fetches full event details by clicking the matching event in the calendar view a
 **Critical notes:**
 - `results` is a **single object** (not an array) for `calendar-read`.
 - `response_status` is always `"unknown"` for `calendar-read` — the popup card does not expose the ShowAs field. Use `calendar` listing to get `response_status`.
-- `attendees` is always `[]` — the popup shows only aggregate counts. The full attendee list is not accessible without navigating to the full event page.
-- `meeting_link` contains the Teams or Zoom join URL extracted from the event body, or `null` if none was found.
+- `attendee_summary` — aggregate count string from the popup (e.g. `"Accepted 5, Didn't respond 3"`). Always present; does not require `--full`.
+- `attendees` — individual `{ name, response }` objects. **Empty array unless `--full` is passed.** With `--full`, response is one of `"accepted"`, `"declined"`, `"tentative"`, `"none"`. Parsing is best-effort.
+- `meeting_link` — usually `null` for Teams meetings without `--full` (popup body is truncated). Use `--full` to get the reliable join URL. `is_online_meeting: true` is the reliable Teams signal without `--full`.
 - Read `references/calendar-events.md` for full schema details and natural language templates.
 
 ---
