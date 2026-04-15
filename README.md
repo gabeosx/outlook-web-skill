@@ -24,6 +24,8 @@ The tradeoff is that it's tightly coupled to the Outlook web UI. If Microsoft re
 - List upcoming calendar events for the next N days
 - Read full event details including attendees and Teams/Zoom meeting links
 - Search calendar events by keyword or date range
+- Fetch Microsoft Teams activity feed, @mentions, and unread chats
+- Get AI-generated summaries of emails and Teams messages from Copilot in Teams
 
 **What it will never do:** send, reply, delete, move, flag, forward, or accept/decline anything. This is enforced at the browser layer with an action policy — not just by convention.
 
@@ -413,6 +415,122 @@ See [`references/calendar-events.md`](references/calendar-events.md) for support
 
 ---
 
+### `teams` — Teams activity feed, mentions, and unread chats
+
+```bash
+node outlook.js teams [--mentions] [--unread] [--limit <n>]
+```
+
+Fetches your Microsoft Teams activity feed using the same Entra SSO session as Outlook. Three modes:
+
+- **Default** — activity feed (all notifications: mentions, replies, reactions, messages)
+- **`--mentions`** — @mentions only
+- **`--unread`** — unread chat summary (one entry per chat thread)
+
+```bash
+node outlook.js teams                    # activity feed (default)
+node outlook.js teams --mentions         # @mentions only
+node outlook.js teams --unread           # unread chats
+node outlook.js teams --limit 10         # limit results
+```
+
+**Response (activity / mentions mode):**
+
+```json
+{
+  "operation": "teams",
+  "status": "ok",
+  "results": [
+    {
+      "sender": "User, Alpha",
+      "channel": "General | Project Alpha",
+      "preview": "Hey @you, can you review the proposal?",
+      "time": "10:32 AM",
+      "type": "mention"
+    }
+  ],
+  "count": 1,
+  "error": null
+}
+```
+
+`type` values: `mention`, `reply`, `reaction`, `message`, `notification`
+
+**Response (`--unread` mode):**
+
+```json
+{
+  "operation": "teams",
+  "status": "ok",
+  "results": [
+    {
+      "name": "User, Alpha",
+      "preview": "Can we sync at 2pm?",
+      "time": "9:15 AM",
+      "has_unread": true
+    }
+  ],
+  "count": 1,
+  "error": null
+}
+```
+
+> **Note:** Teams uses the same Entra SSO session as Outlook. Set `TEAMS_BASE_URL` in `.env` if your tenant uses a custom Teams URL (defaults to `https://teams.microsoft.com`).
+
+---
+
+### `copilot-summary` — AI-generated summary from Copilot in Teams
+
+```bash
+node outlook.js copilot-summary [--type email|teams|both] [--since "<date>"] [--prompt "<custom>"]
+```
+
+Sends a summary prompt to Copilot in Teams and returns the response. Copilot summarizes emails, Teams messages, or both.
+
+- **`--type`** — What to summarize: `email`, `teams`, or `both` (default: `both`)
+- **`--since`** — Time window, e.g. `"yesterday"`, `"last week"`, `"Monday"` (Copilot interprets naturally)
+- **`--prompt`** — Custom prompt override (replaces the default summary prompt entirely)
+
+```bash
+node outlook.js copilot-summary                                    # email + Teams summary
+node outlook.js copilot-summary --type email                       # email only
+node outlook.js copilot-summary --type teams --since "yesterday"   # Teams since yesterday
+node outlook.js copilot-summary --prompt "What did I miss today?"  # custom prompt
+```
+
+**Response:**
+
+```json
+{
+  "operation": "copilot-summary",
+  "status": "ok",
+  "type": "both",
+  "raw_response": "Here's your summary for today:\n\n**Email:** You have 3 high-priority...\n\n**Teams:** Alice mentioned you in Project Alpha...",
+  "items": [
+    {
+      "sender": "User, Alpha",
+      "subject": "Q2 Budget Review",
+      "date": "Today",
+      "summary": "Requests your review of Q2 budget before EOD.",
+      "action": "review required"
+    }
+  ],
+  "count": 1,
+  "error": null
+}
+```
+
+**Critical notes:**
+- `raw_response` is always present — it contains Copilot's full text output verbatim.
+- `items` is best-effort parsed from `raw_response` — Copilot's format varies; parsing may return an empty array even when `raw_response` is non-empty. Always use `raw_response` as the authoritative output.
+- Generation takes 10–30 seconds — this subcommand is slow by nature.
+- Copilot may automatically enable a "Researcher" plugin for some queries — this is normal behavior.
+- Copilot truncates at approximately 25 items.
+
+> **Note:** `copilot-summary` requires Copilot to be enabled for your Teams tenant.
+
+---
+
 ## Response envelope
 
 Every subcommand writes a single JSON line to stdout:
@@ -439,9 +557,9 @@ If stdout is empty and exit code is non-zero, a Node.js crash occurred before th
 | Code | When | Recovery |
 |------|------|----------|
 | `INVALID_ARGS` | Startup, search, read | Missing `.env` var, unknown subcommand, or missing required argument — fix config, do not retry |
-| `SESSION_INVALID` | Search, read, digest | Session expired — run `auth`, then retry the original command |
+| `SESSION_INVALID` | search, read, digest, teams, copilot-summary | Session expired — run `auth`, then retry the original command |
 | `AUTH_REQUIRED` | Session check | Session absent — run `auth` |
-| `OPERATION_FAILED` | Read, digest, auth | Browser timeout or empty snapshot — retry once; if it recurs, surface `error.message` |
+| `OPERATION_FAILED` | read, digest, auth, teams, copilot-summary | Browser timeout or empty snapshot — retry once; if it recurs, surface `error.message` |
 | `MESSAGE_NOT_FOUND` | Read only | Email ID not found — retry with `--query` flag from the original search |
 | `EVENT_NOT_FOUND` | calendar-read only | Event ID not found in calendar view — run `calendar` to get fresh IDs |
 
@@ -559,11 +677,13 @@ This means even if a prompt injection in an email body instructed the assistant 
 - **Subject field** — the Outlook list view doesn't expose subject and sender separately; `search` and `digest` results have an empty `subject`. Use `read` to get the actual subject.
 - **"Today" group** — `digest` reads only the Today group visible in the current inbox view. If your inbox is heavily filtered or grouped differently, results may be incomplete.
 - **Folder scope** — `--folder` supports standard top-level folders only (Inbox, Sent Items, Drafts, Deleted Items, Junk Email, Archive). Custom or nested subfolders may not be found if they are collapsed in the navigation pane.
-- **Multi-tenant** — tested on a single Outlook tenant. Different organizations may have slightly different UI configurations.
+- **Multi-tenant** — tested on a single Outlook/Teams tenant. Different organizations may have slightly different UI configurations.
 - **Attachments** — names are listed but content is not downloaded.
 - **Calendar meeting links** — Teams join URLs are usually absent from the popup card (`meeting_link: null`). Use `--full` with `calendar-read` to get a reliable link; `is_online_meeting: true` is the reliable Teams signal without the extra round-trip.
 - **Calendar response status** — `calendar-read` always returns `"unknown"` for `response_status`; the popup card doesn't expose the ShowAs field. Use `calendar` listing to get accepted/declined status.
 - **Calendar search scope** — `calendar-search` uses the global Outlook search box; results are filtered to calendar event ARIA patterns but may occasionally include non-calendar items.
+- **Teams ARIA** — Teams web's accessibility tree varies by version. The `teams` subcommand extracts what it can from listitem/option elements; some activity items may not parse cleanly.
+- **Copilot availability** — `copilot-summary` requires Copilot to be enabled for your Teams tenant. Generation takes 10-30 seconds and Copilot may truncate at ~25 items.
 
 ---
 
@@ -578,11 +698,15 @@ lib/
   digest.js             Inbox digest with scoring
   tune.js               Scoring calibration
   calendar.js           Calendar list, read, and search implementation
+  teams.js              Teams activity feed, mentions, unread chats
+  copilot.js            Copilot-in-Teams summary generation
   output.js             JSON envelope helpers
   run.js                agent-browser wrapper with action policy
 policy-auth.json        Action allowlist for auth operations
 policy-read.json        Action allowlist for read operations
 policy-search.json      Action allowlist for search/digest operations
+policy-teams.json       Action allowlist for teams operations
+policy-copilot.json     Action allowlist for copilot-summary operations
 scoring.json.example    Default scoring config — copy to scoring.json
 SKILL.md                Claude Code skill descriptor
 references/
