@@ -78,11 +78,12 @@ Note: If the headed browser fails to launch, auth returns `OPERATION_FAILED` (no
 ### search
 
 ```bash
-node outlook.js search "<kql-query>" [--limit <n>]
+node outlook.js search "<kql-query>" [--limit <n>] [--folder <name>]
 ```
 
 - `<kql-query>` — KQL query string (required). **Read `references/kql-syntax.md` before constructing any query.**
 - `--limit <n>` — Maximum results to return (default: 20)
+- `--folder <name>` — Optional. Scope search to a specific folder. Accepts aliases: `sent`, `drafts`, `inbox`, `deleted`, `trash`, `junk`, `spam`, `archive`. Custom folder names are passed through as-is. Default: searches from inbox view.
 
 ```json
 {
@@ -146,8 +147,10 @@ Note: `results` is a **single object** (not an array) for `read`. `subject` is p
 ### digest
 
 ```bash
-node outlook.js digest
+node outlook.js digest [--folder <name>]
 ```
+
+- `--folder <name>` — Optional. Scope digest to a specific folder instead of inbox. Same aliases as `search`. Note: `digest --folder` reads the "Today" group from the target folder; folders without a "Today" group return empty results.
 
 Fetches today's inbox messages and returns them sorted by importance score (descending). Reads only the "Today" group from the inbox view. See `references/digest-signals.md` for scoring explanation and natural-language templates.
 
@@ -174,6 +177,9 @@ Fetches today's inbox messages and returns them sorted by importance score (desc
 ```
 
 Note: Empty results (`[]`) means no "Today" group was found in the current inbox view — not necessarily an empty inbox. Try `node outlook.js search "is:unread"` as a fallback.
+
+**Critical notes:**
+- `--folder` supports standard top-level folders only: Inbox, Sent Items, Drafts, Deleted Items, Junk Email, Archive. Custom or nested subfolders may not be clickable if collapsed in the navigation pane.
 
 ---
 
