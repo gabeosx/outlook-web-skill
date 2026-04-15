@@ -103,6 +103,8 @@ OUTLOOK_BROWSER_PATH=/Applications/Google Chrome.app/Contents/MacOS/Google Chrom
 OUTLOOK_BROWSER_PROFILE=~/.outlook-skill-profile
 ```
 
+**Finding your Chrome executable and profile path:** Open Chrome and navigate to `chrome://version/`. The **Executable Path** field gives you `OUTLOOK_BROWSER_PATH`. The **Profile Path** field shows your current profile directory — you can use that path (or a subdirectory next to it) for `OUTLOOK_BROWSER_PROFILE`. Keep the profile separate from your daily Chrome profile to avoid session conflicts.
+
 Tilde expansion in `OUTLOOK_BROWSER_PATH` and `OUTLOOK_BROWSER_PROFILE` is handled automatically.
 
 ### 2. Configure digest scoring (optional)
