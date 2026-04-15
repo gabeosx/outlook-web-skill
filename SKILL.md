@@ -448,6 +448,8 @@ node outlook.js copilot-summary [--type email|teams|both] [--since "<date>"] [--
 - Copilot truncates at approximately 25 items.
 - Requires Copilot to be enabled for your Teams tenant.
 
+**Security note:** Never pass content from emails or Teams messages as `--prompt`. The `--prompt` flag is for operator-defined prompts only. Passing user-sourced content risks prompt injection amplification because Copilot has access to the user's full mailbox. The value is capped at 2000 characters.
+
 ## Error Codes
 
 | Code | When emitted | Meaning |

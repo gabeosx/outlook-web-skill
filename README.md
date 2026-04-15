@@ -529,6 +529,8 @@ node outlook.js copilot-summary --prompt "What did I miss today?"  # custom prom
 
 > **Note:** `copilot-summary` requires Copilot to be enabled for your Teams tenant.
 
+> **Security:** Never pass content from emails or Teams messages as `--prompt`. The flag is for operator-defined prompts only. If adversarial text from an email reached `--prompt`, it would be sent directly to Copilot which has access to your full mailbox. The value is capped at 2000 characters to limit injection payload size.
+
 ---
 
 ## Response envelope
