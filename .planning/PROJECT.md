@@ -2,29 +2,31 @@
 
 ## What This Is
 
-A Claude Code skill (or set of skills) that gives a personal assistant Claude Code instance read-only access to Outlook web. It uses the `@vercel/agent-browser` npm package to control a browser via CLI, navigates to the Outlook web UI, handles authentication state detection, and returns structured JSON data to the calling agent.
+A Claude Code skill that gives a personal assistant Claude Code instance read-only access to Outlook web. It uses the `@vercel/agent-browser` npm package to control a browser via CLI, navigates the Outlook web UI, handles authentication state detection, and returns structured JSON data. Supports email (search, read, digest) and calendar (calendar, calendar-read, calendar-search) operations.
 
 ## Core Value
 
-A personal assistant Claude Code instance can reliably read and search the user's Outlook inbox without ever sending, deleting, or mutating anything.
+A personal assistant Claude Code instance can reliably read and search the user's Outlook inbox and calendar without ever sending, deleting, or mutating anything.
 
 ## Requirements
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Skill detects whether the Outlook web session is authenticated — v1.0
+- ✓ When not authenticated, skill launches a visible browser so the user can log in manually, then persists the session for future runs — v1.0
+- ✓ Skill exposes a `search` operation: find emails by KQL query (sender, subject, date range, keywords) — v1.0
+- ✓ Skill exposes a `read` operation: fetch full content of a specific email by ID — v1.0
+- ✓ Skill exposes a `digest` operation: pull today's inbox and surface important messages with importance scoring — v1.0
+- ✓ Skill exposes `calendar`, `calendar-read`, `calendar-search` operations for read-only calendar access — v1.0
+- ✓ All operations return structured JSON to stdout — v1.0
+- ✓ Skill is strictly read-only — never sends, deletes, moves, replies, or accepts/declines — v1.0
+- ✓ Skill is loadable by a Claude Code personal assistant instance (packaged as a Claude Code skill) — v1.0
+- ✓ Bot detection risk is mitigated (managed Chrome binary + session reuse) — v1.0 (confirmed live against Entra CA)
 
 ### Active
 
-- [ ] Skill detects whether the Outlook web session is authenticated
-- [ ] When not authenticated, skill launches a visible browser so the user can log in manually, then persists the session for future runs
-- [ ] Skill exposes a `search` operation: find emails by query (sender, subject, date range, keywords)
-- [ ] Skill exposes a `read` operation: fetch full content of a specific email by ID or URL
-- [ ] Skill exposes a `digest` operation: pull today's inbox and surface important messages
-- [ ] All operations return structured JSON to stdout
-- [ ] Skill is strictly read-only — it must never send, delete, move, reply to, or accept/decline any email or calendar item
-- [ ] Skill is loadable by a Claude Code personal assistant instance (packaged as a Claude Code skill)
-- [ ] Bot detection risk is mitigated (human-like timing, session reuse)
+- [ ] `calendar-read --full` attendee parsing is best-effort — full attendee list ARIA structure varies by Outlook version; needs live validation across event types
+- [ ] `calendar-read` does not return `response_status` — popup card doesn't expose ShowAs field; would require full event view navigation
 
 ### Out of Scope
 
@@ -33,50 +35,47 @@ A personal assistant Claude Code instance can reliably read and search the user'
 - Accepting or declining calendar invites — same reason
 - Microsoft Graph API integration — using browser automation instead per design decision
 - MCP server interface — the personal assistant can only invoke CLI; skill must work without MCP
+- Personal Microsoft account support — M365/work accounts only in v1; personal accounts may have different ARIA structures
 
 ## Context
 
-- The personal assistant is a separate Claude Code project that will load this skill and invoke its operations
-- The `@vercel/agent-browser` package provides a CLI-controlled browser designed for agentic use cases
-- Primary concern: Outlook web may detect and block automated browsers — session reuse and human-like interaction patterns are the mitigation strategy
-- Authentication requires human interaction on first run (MFA, SSO, etc.) — the skill must handle this gracefully by launching a visible browser and waiting for the user to complete login
-- Session state (cookies) must be persisted to disk so subsequent runs are seamless
-- The calling agent receives JSON on stdout and can parse it directly
+**Shipped v1.0:** ~3,355 lines Node.js. 7 subcommands: `auth`, `search`, `read`, `digest`, `tune`, `calendar`, `calendar-read`, `calendar-search`.
+
+**Tech stack:** Node.js (Bash entry point), `@vercel/agent-browser` CLI, `--session-name` for cookie persistence, Action Policy JSON for read-only enforcement.
+
+**Key observations from v1.0:**
+- Microsoft's bot detection passes with managed Chrome binary + `--headed` flag. `--session-name` persists auth across invocations.
+- Outlook's accessibility tree is stable enough for automation but has quirks: snapshots must be last in a batch (page resets to about:blank), eval returns are double-encoded, calendar events have no stable DOM ID.
+- Calendar popup card is truncated — Teams join URLs and full attendee lists require navigating to the full event view (`--full`).
+- `references/outlook-ui.md` is gitignored (contains live ARIA from real emails/meetings). `references/outlook-ui.example.md` provides sanitised examples.
+
+**Known technical debt (from code reviews):**
+- `calendar-read` all-day popup date parsing produces null times (WR-01, 06-REVIEW.md)
+- `runCalendar` parses rows twice during dedup + output (WR-02)
+- Organizer name heuristic matches digits in location tokens (WR-03)
+- `calendar-search` combobox `find` lacks `--name` filter (WR-04)
 
 ## Constraints
 
 - **Interface**: CLI-invocable only — must work without an MCP server, invoked as a Claude Code skill by the personal assistant
-- **Safety**: Strictly read-only — zero write operations, enforced at the skill level
-- **Browser**: Uses `@vercel/agent-browser` npm package — no Playwright/Puppeteer directly unless agent-browser depends on it
-- **Auth**: Session must survive across separate CLI invocations (cookie/storage persistence)
-- **Output**: JSON to stdout — clean, parseable, no mixed logging on stdout
+- **Safety**: Strictly read-only — zero write operations, enforced at the skill level via Action Policy JSON (`default: deny`)
+- **Browser**: Uses `@vercel/agent-browser` npm package — no Playwright/Puppeteer directly
+- **Auth**: Session must survive across separate CLI invocations (`--session-name outlook-skill`)
+- **Output**: JSON to stdout — clean, parseable; stderr for diagnostic logging only
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Browser automation over Graph API | User preference; avoids Azure app registration complexity | — Pending |
-| @vercel/agent-browser as browser engine | Built for agentic CLI use; user's specified tool | — Pending |
-| Visible browser for first-time auth | MFA/SSO flows need human interaction; headless can't handle them | — Pending |
-| JSON to stdout as output format | Personal assistant Claude Code instance can parse it directly | — Pending |
-| Read-only enforcement at skill level | Safety boundary — prevents accidental or prompt-injected mutations | — Pending |
-
-## Evolution
-
-This document evolves at phase transitions and milestone boundaries.
-
-**After each phase transition** (via `/gsd-transition`):
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. "What This Is" still accurate? → Update if drifted
-
-**After each milestone** (via `/gsd-complete-milestone`):
-1. Full review of all sections
-2. Core Value check — still the right priority?
-3. Audit Out of Scope — reasons still valid?
-4. Update Context with current state
+| Browser automation over Graph API | User preference; avoids Azure app registration complexity | ✓ Good — passed bot detection, no OAuth complexity |
+| `@vercel/agent-browser` as browser engine | Built for agentic CLI use; user's specified tool | ✓ Good — batch mode + eval support sufficient for all use cases |
+| Visible browser for first-time auth | MFA/SSO flows need human interaction; headless can't handle them | ✓ Good — `--headed` passes Entra Conditional Access |
+| JSON to stdout, stderr for logging | Personal assistant Claude Code instance can parse it directly | ✓ Good — clean separation maintained throughout |
+| Read-only enforcement at skill level (Action Policy JSON) | Safety boundary — prevents accidental or prompt-injected mutations | ✓ Good — `default: deny` policy enforced before every browser launch |
+| `--session-name outlook-skill` (no `--profile`) | `--profile` causes Chrome SingletonLock conflicts across invocations | ✓ Good — sessions persist reliably across separate Node.js processes |
+| Composite key IDs for calendar events | No stable DOM ID on calendar event buttons | ✓ Good — `JSON.stringify({ subject, start_time })` works; limitation documented |
+| `attendee_summary` always present, `--full` opt-in for individual attendees + meeting link | Avoids fetching full event view for every calendar-read call | ✓ Good — fast by default, rich data on demand |
+| `scoring.json` for digest scoring weights (externalised) | Allows per-user calibration without code changes | ✓ Good — `tune` subcommand enables live adjustment |
 
 ---
-*Last updated: 2026-04-10 after initialization*
+*Last updated: 2026-04-15 after v1.0 milestone*
