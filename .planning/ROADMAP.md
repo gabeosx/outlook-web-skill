@@ -21,6 +21,10 @@ Full phase details: `.planning/milestones/v1.0-ROADMAP.md`
 
 </details>
 
+## v1.1 Phases
+
+- [ ] Phase 1: Folder Navigation (`--folder` flag for search) — planned
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -32,3 +36,13 @@ Full phase details: `.planning/milestones/v1.0-ROADMAP.md`
 | 4. Daily Digest Operation | v1.0 | 2/2 | Complete | 2026-04-12 |
 | 5. Skill Packaging | v1.0 | 2/2 | Complete | 2026-04-12 |
 | 6. Calendar Capabilities | v1.0 | 4/4 | Complete | 2026-04-15 |
+
+### Phase 1: Folder Navigation (`--folder` flag for search)
+
+**Goal:** Add `--folder <name>` flag to `search` (and `digest`) that navigates to the target folder via treeitem click before running the search batch, scoping results to that folder. Enables finding sent replies, drafts, and any non-inbox mail.
+**Depends on:** None
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Create folder normalization module + add --folder to search
+- [ ] 01-02-PLAN.md — Add --folder to digest + update README.md and SKILL.md
