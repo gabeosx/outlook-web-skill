@@ -1,12 +1,12 @@
 ---
 name: outlook-web
-description: Read-only access to Outlook web email and calendar. Use when the user needs to search emails, read an email, get a prioritized digest of today's inbox, check calendar events, find a specific meeting, or search upcoming meetings. Triggers include "check my email", "find email from", "read that email", "what's in my inbox today", "what's on my calendar", "do I have any meetings today", "find the standup meeting", or any request to access, search, or summarize Outlook email or calendar. NEVER use for sending, replying, deleting, accepting, declining, or any write operation.
+description: Read-only access to Outlook web email, calendar, and Microsoft Teams. Use when the user needs to search emails, read an email, get a prioritized digest of today's inbox, check calendar events, find a specific meeting, check Teams activity/mentions, or get a Copilot-generated summary. Triggers include "check my email", "find email from", "read that email", "what's in my inbox today", "what's on my calendar", "do I have any meetings today", "check Teams", "Teams mentions", "copilot summary", or any request to access, search, or summarize Outlook email, calendar, or Teams messages. NEVER use for sending, replying, deleting, accepting, declining, or any write operation.
 allowed-tools: Bash(node outlook.js:*)
 ---
 
 # Outlook Web Skill
 
-Reads the user's Outlook web inbox and calendar via a managed Chrome session — no Microsoft Graph API, no app registration. Invoke via `node outlook.js <subcommand>` from the skill root directory. This skill will NEVER send, delete, move, reply to, forward, flag, unflag, accept, or decline any email or calendar item.
+Reads the user's Outlook web inbox, calendar, and Microsoft Teams via a managed Chrome session — no Microsoft Graph API, no app registration. Invoke via `node outlook.js <subcommand>` from the skill root directory. This skill will NEVER send, delete, move, reply to, forward, flag, unflag, accept, or decline any email, Teams message, or calendar item.
 
 ## Safety Constraint: Read-Only
 
@@ -351,14 +351,111 @@ Searches calendar events using the Outlook search combobox, navigating to the ca
 - Whether results are exclusively calendar events is not guaranteed — results are filtered to ARIA patterns that match calendar event buttons (year in accessible name or "all day event").
 - Read `references/calendar-events.md` for supported search operators and limitations vs. email KQL syntax.
 
+---
+
+### teams
+
+```bash
+node outlook.js teams [--mentions] [--unread] [--limit <n>]
+```
+
+- **Default** — activity feed (all notifications)
+- **`--mentions`** — @mentions only
+- **`--unread`** — unread chat summary
+
+Uses the same Entra SSO session as Outlook. Set `TEAMS_BASE_URL` in `.env` for custom Teams URLs.
+
+**Response (activity / mentions mode):**
+
+```json
+{
+  "operation": "teams",
+  "status": "ok",
+  "results": [
+    {
+      "sender": "User, Alpha",
+      "channel": "General | Project Alpha",
+      "preview": "Hey @you, can you review the proposal?",
+      "time": "10:32 AM",
+      "type": "mention"
+    }
+  ],
+  "count": 1,
+  "error": null
+}
+```
+
+`type` values: `mention`, `reply`, `reaction`, `message`, `notification`
+
+**Response (`--unread` mode):**
+
+```json
+{
+  "operation": "teams",
+  "status": "ok",
+  "results": [
+    {
+      "name": "User, Alpha",
+      "preview": "Can we sync at 2pm?",
+      "time": "9:15 AM",
+      "has_unread": true
+    }
+  ],
+  "count": 1,
+  "error": null
+}
+```
+
+---
+
+### copilot-summary
+
+```bash
+node outlook.js copilot-summary [--type email|teams|both] [--since "<date>"] [--prompt "<custom>"]
+```
+
+- **`--type`** — What to summarize: `email`, `teams`, or `both` (default: `both`)
+- **`--since`** — Time window (e.g. `"yesterday"`, `"last week"`)
+- **`--prompt`** — Custom prompt (replaces the default summary prompt)
+
+**Response:**
+
+```json
+{
+  "operation": "copilot-summary",
+  "status": "ok",
+  "type": "both",
+  "raw_response": "Here's your summary for today:\n\n**Email:** You have 3 high-priority...",
+  "items": [
+    {
+      "sender": "User, Alpha",
+      "subject": "Q2 Budget Review",
+      "date": "Today",
+      "summary": "Requests your review of Q2 budget before EOD.",
+      "action": "review required"
+    }
+  ],
+  "count": 1,
+  "error": null
+}
+```
+
+**Critical notes:**
+- `raw_response` is always present and is the authoritative output — always use it.
+- `items` is best-effort parsed from `raw_response` — may be empty even when `raw_response` is non-empty.
+- Generation takes 10–30 seconds.
+- Copilot may auto-enable a "Researcher" plugin — this is normal.
+- Copilot truncates at approximately 25 items.
+- Requires Copilot to be enabled for your Teams tenant.
+
 ## Error Codes
 
 | Code | When emitted | Meaning |
 |------|-------------|---------|
 | `INVALID_ARGS` | startup, search, read | Missing env var, missing subcommand, or missing required argument |
-| `SESSION_INVALID` | search, read, digest | Session expired mid-operation — run `auth`, then retry the original operation |
+| `SESSION_INVALID` | search, read, digest, teams, copilot-summary | Session expired mid-operation — run `auth`, then retry the original operation |
 | `AUTH_REQUIRED` | session check | Session absent (per REQUIREMENTS; in practice `SESSION_INVALID` is the operational code) |
-| `OPERATION_FAILED` | read, digest, auth | Browser error, timeout, or empty snapshot — retry once; if still fails, surface `error.message` to user |
+| `OPERATION_FAILED` | read, digest, auth, teams, copilot-summary | Browser error, timeout, or empty snapshot — retry once; if still fails, surface `error.message` to user |
 | `MESSAGE_NOT_FOUND` | read only | Email with given `id` not found in search results — pass `--query` flag with the original search query |
 | `EVENT_NOT_FOUND` | calendar-read only | Event with given `id` not found in calendar view — run `node outlook.js calendar` to get fresh event IDs |
 
