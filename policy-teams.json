@@ -13,7 +13,9 @@
     "session",
     "click",
     "eval",
+    "evaluate",
     "getbytext",
-    "find"
+    "find",
+    "dialog"
   ]
 }
