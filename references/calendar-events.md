@@ -69,7 +69,7 @@ The `calendar-read` subcommand returns a single event object (not an array) in t
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `meeting_link` | string or null | Teams or Zoom join URL extracted from the event body text. Null if no meeting link was found. Only Teams (`teams.microsoft.com/l/meetup-join/`) and Zoom (`*.zoom.us/j/`) URLs are extracted. |
+| `meeting_link` | string or null | Teams or Zoom join URL, if present in the popup card body text. **Usually `null` for Teams meetings** — Outlook only loads the full event body (which contains the join URL) when the full event view is opened, not in the popup card. Use `is_online_meeting: true` as the reliable signal that a meeting has a join link. |
 | `attendees` | array | List of attendee objects. **Currently always an empty array** — the popup card shows only aggregate attendee counts (e.g., "Accepted 5, Didn't respond 3"), not individual names. Full attendee list requires navigating to the full event page (out of scope). |
 | `body_text` | string | Event agenda and notes as plain text. May contain meeting join instructions, agenda items, links, and other event body content. Empty string if no body content was visible. |
 

@@ -124,10 +124,10 @@ Plans:
   8. `AGENT_BROWSER_CONTENT_BOUNDARIES=1` applies to calendar-read body text (prompt injection defense)
 **Plans:** 4 plans
 Plans:
-- [ ] 06-01-PLAN.md — ARIA exploration of calendar UI + outlook.js wiring + lib/calendar.js skeleton
-- [ ] 06-02-PLAN.md — Calendar listing: runCalendar() with accessible name parser, scroll-accumulate, --days filtering
-- [ ] 06-03-PLAN.md — Calendar read + calendar search: runCalendarRead() with detail pane extraction, runCalendarSearch() with combobox workflow
-- [ ] 06-04-PLAN.md — Documentation: references/calendar-events.md + SKILL.md update with calendar subcommands
+- [x] 06-01-PLAN.md — ARIA exploration of calendar UI + outlook.js wiring + lib/calendar.js skeleton
+- [x] 06-02-PLAN.md — Calendar listing: runCalendar() with accessible name parser, scroll-accumulate, --days filtering
+- [x] 06-03-PLAN.md — Calendar read + calendar search: runCalendarRead() with detail pane extraction, runCalendarSearch() with combobox workflow
+- [x] 06-04-PLAN.md — Documentation: references/calendar-events.md + SKILL.md update with calendar subcommands
 
 ## Progress
 
