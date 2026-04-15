@@ -58,6 +58,49 @@
 
 ---
 
+## Milestone: v1.1 — Folder Navigation
+
+**Shipped:** 2026-04-15
+**Phases:** 1 | **Plans:** 2 | **Timeline:** 1 day
+
+### What Was Built
+
+- `lib/folder.js` — folder normalization module with 9 ARIA alias mappings and custom-name passthrough
+- `--folder <name>` flag for both `search` and `digest` via treeitem click batch injection
+- `digest --folder` (no value) → INVALID_ARGS error instead of silent inbox fallback
+- UAT-driven bug fixes: Office add-in DOM modal handling via eval, `Junk E-mail` alias corrected from live ARIA snapshot, `dialog` action added to policy allow list, stderr verbosity reduced
+
+### What Worked
+
+- **UAT caught real bugs immediately** — the dialog blocking issue, wrong alias, and silent fallback were all found in a single UAT session before any user was impacted. UAT before closing the milestone is worth the friction.
+- **Debug agent isolation** — spawning gsd-debugger kept the main context clean while investigating the dialog issue. The 3-iteration loop (fix → test → still broken) would have consumed the conversation without subagent isolation.
+- **Live ARIA snapshot for debugging** — when `Junk E-mail` kept failing, running a live snapshot to see the exact treeitem accessible name (`"Junk E-mail"` vs `"Junk Email"`) was faster than guessing.
+
+### What Was Inefficient
+
+- **Dialog fix took 3 iterations** — the root cause (DOM modal, not CDP dialog) required multiple subagent passes. Could have been caught faster by taking a snapshot immediately after the dialog warning appeared, before hypothesising.
+- **SUMMARY.md one-liner field still not parsing** — the accomplishment extraction in gsd-tools still reads "One-liner:" as empty. Same issue noted in v1.0 retro — still not fixed. Needs a template-level fix.
+- **Folder navigation reliability is partial** — treeitem click is susceptible to the modal re-appearing between batch commands. URL-based navigation would be more reliable; the fix shipped works for the common case but isn't bulletproof.
+
+### Patterns Established
+
+- **Double-dismiss eval pattern** — inject `DISMISS_ADDIN_DIALOG` eval both at batch start AND inside folderCommands (immediately before treeitem click) to handle re-appearing DOM modals.
+- **Live ARIA snapshot for alias validation** — run a batch snapshot to confirm treeitem accessible names before hardcoding aliases. `references/outlook-ui.md` should capture these.
+- **Policy allow-list must include all eval actions** — `dialog` action was blocked by default-deny policy even after being added to the batch. Check policy file whenever adding a new action type.
+
+### Key Lessons
+
+1. **UAT is a bug finder, not a rubber stamp** — this milestone had 5 issues found in UAT that weren't caught by code review or verification. Plan for UAT to find things.
+2. **Snapshot first when something is blocking** — when a treeitem click fails with "Element not found," take a snapshot immediately to see the actual DOM state rather than guessing.
+3. **DOM modals ≠ CDP dialogs** — `dialog dismiss` only handles native `window.confirm()` dialogs. React/DOM-level modals need eval-based dismissal. Worth documenting in agent-browser references.
+
+### Cost Observations
+
+- Model: Claude Sonnet 4.6 (primary), sonnet for debug subagents
+- Notable: Small milestone (1 phase) but UAT + debug consumed more time than the original implementation — browser automation testing overhead is real
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution

@@ -22,6 +22,7 @@ A personal assistant Claude Code instance can reliably read and search the user'
 - ✓ Skill is strictly read-only — never sends, deletes, moves, replies, or accepts/declines — v1.0
 - ✓ Skill is loadable by a Claude Code personal assistant instance (packaged as a Claude Code skill) — v1.0
 - ✓ Bot detection risk is mitigated (managed Chrome binary + session reuse) — v1.0 (confirmed live against Entra CA)
+- ✓ `search` and `digest` support `--folder <name>` to scope to any Outlook folder — v1.1
 
 ### Active
 
@@ -39,17 +40,20 @@ A personal assistant Claude Code instance can reliably read and search the user'
 
 ## Context
 
-**Shipped v1.0:** ~3,355 lines Node.js. 7 subcommands: `auth`, `search`, `read`, `digest`, `tune`, `calendar`, `calendar-read`, `calendar-search`.
+**Shipped v1.1:** ~3,416 lines Node.js. 8 subcommands: `auth`, `search`, `read`, `digest`, `tune`, `calendar`, `calendar-read`, `calendar-search`. Both `search` and `digest` now accept `--folder <name>`.
 
 **Tech stack:** Node.js (Bash entry point), `@vercel/agent-browser` CLI, `--session-name` for cookie persistence, Action Policy JSON for read-only enforcement.
 
-**Key observations from v1.0:**
+**Key observations:**
 - Microsoft's bot detection passes with managed Chrome binary + `--headed` flag. `--session-name` persists auth across invocations.
 - Outlook's accessibility tree is stable enough for automation but has quirks: snapshots must be last in a batch (page resets to about:blank), eval returns are double-encoded, calendar events have no stable DOM ID.
 - Calendar popup card is truncated — Teams join URLs and full attendee lists require navigating to the full event view (`--full`).
 - `references/outlook-ui.md` is gitignored (contains live ARIA from real emails/meetings). `references/outlook-ui.example.md` provides sanitised examples.
+- Outlook shows an Office add-in consent DOM modal (not a native browser dialog) on every invocation. Dismissed via `document.querySelectorAll('button')` eval targeting the OK button before folder navigation.
+- Treeitem names in the nav pane include unread counts and state (e.g., `"Inbox selected 564 unread"`) — aliases need to match prefixes only. `Junk E-mail` is hyphenated (not `Junk Email`).
 
-**Known technical debt (from code reviews):**
+**Known technical debt:**
+- Folder navigation via treeitem click is susceptible to the DOM modal re-appearing between batch commands — URL-based navigation would be more reliable for v1.2
 - `calendar-read` all-day popup date parsing produces null times (WR-01, 06-REVIEW.md)
 - `runCalendar` parses rows twice during dedup + output (WR-02)
 - Organizer name heuristic matches digits in location tokens (WR-03)
@@ -78,4 +82,4 @@ A personal assistant Claude Code instance can reliably read and search the user'
 | `scoring.json` for digest scoring weights (externalised) | Allows per-user calibration without code changes | ✓ Good — `tune` subcommand enables live adjustment |
 
 ---
-*Last updated: 2026-04-15 after v1.0 milestone*
+*Last updated: 2026-04-15 after v1.1 milestone*

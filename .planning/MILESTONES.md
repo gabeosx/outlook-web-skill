@@ -1,5 +1,21 @@
 # Milestones
 
+## v1.1 Folder Navigation (Shipped: 2026-04-15)
+
+**Phases completed:** 1 phase, 2 plans
+**Codebase:** ~3,416 lines JS
+
+**Key accomplishments:**
+
+- `lib/folder.js` — folder name normalization with 9 ARIA alias mappings + passthrough for custom folder names
+- `--folder <name>` flag for `search` — treeitem click injection scopes combobox search to target folder
+- `--folder <name>` flag for `digest` — treeitem click injection navigates before CONVID eval, scoping today's digest to any folder
+- `digest --folder` (no value) now errors with INVALID_ARGS instead of silently falling back to inbox
+- Office add-in DOM modal handled via eval (not CDP) — unblocks folder navigation on every invocation
+- `Junk E-mail` alias corrected (live ARIA snapshot); `dialog` action added to policy allow list; stderr verbosity reduced
+
+---
+
 ## v1.0 MVP (Shipped: 2026-04-15)
 
 **Phases completed:** 7 phases (0–6), 16 plans
