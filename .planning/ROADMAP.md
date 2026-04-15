@@ -44,5 +44,5 @@ Full phase details: `.planning/milestones/v1.0-ROADMAP.md`
 **Plans:** 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Create folder normalization module + add --folder to search
-- [ ] 01-02-PLAN.md — Add --folder to digest + update README.md and SKILL.md
+- [x] 01-01-PLAN.md — Create folder normalization module + add --folder to search
+- [x] 01-02-PLAN.md — Add --folder to digest + update README.md and SKILL.md
