@@ -21,6 +21,9 @@ The tradeoff is that it's tightly coupled to the Outlook web UI. If Microsoft re
 - Read the full body, subject, recipients, and attachments of any email
 - Return a prioritized digest of today's inbox sorted by importance score
 - Recalibrate the scoring algorithm when rankings seem off
+- List upcoming calendar events for the next N days
+- Read full event details including attendees and Teams/Zoom meeting links
+- Search calendar events by keyword or date range
 
 **What it will never do:** send, reply, delete, move, flag, forward, or accept/decline anything. This is enforced at the browser layer with an action policy — not just by convention.
 
@@ -141,7 +144,7 @@ Checks whether the saved session is still valid. If it is, returns immediately (
 ### `search` — Find emails by query
 
 ```bash
-node outlook.js search "<query>" [--limit <n>]
+node outlook.js search "<query>" [--limit <n>] [--folder <name>]
 ```
 
 Searches your inbox using a KQL query. Returns up to `--limit` results (default: 20).
@@ -152,7 +155,12 @@ node outlook.js search "subject:budget is:unread"
 node outlook.js search "hasattachment:true after:2024-01-01"
 node outlook.js search "project alpha"              # free-text search
 node outlook.js search "is:unread" --limit 50
+node outlook.js search "from:alice" --folder sent       # search Sent Items
+node outlook.js search "subject:draft" --folder drafts  # search Drafts
+node outlook.js search "is:unread" --folder "Junk Email" # search with exact name
 ```
+
+> **Folder aliases:** `sent` -> Sent Items, `drafts` -> Drafts, `inbox` -> Inbox, `deleted`/`trash` -> Deleted Items, `junk`/`spam` -> Junk Email, `archive` -> Archive. Multi-word names like `"Sent Items"` require shell quoting; aliases avoid this. Custom folder names are passed through as-is.
 
 **Response:**
 
@@ -224,7 +232,7 @@ node outlook.js read "AAQkADM..." --query "from:alice@example.com"
 ### `digest` — Today's inbox, sorted by importance
 
 ```bash
-node outlook.js digest
+node outlook.js digest [--folder <name>]
 ```
 
 Reads the "Today" group from your inbox view and returns emails sorted by importance score (highest first). Useful as a morning briefing: "what actually needs my attention today?"
@@ -251,6 +259,12 @@ Reads the "Today" group from your inbox view and returns emails sorted by import
 }
 ```
 
+```bash
+node outlook.js digest --folder sent    # today's digest from Sent Items
+```
+
+> **Note:** `digest --folder` reads the "Today" group from the target folder. Folders without a "Today" group (e.g., Sent Items when no messages were sent today) return empty results — this is not an error.
+
 If results are empty, no "Today" group was visible in the current inbox view. Fall back to `search "is:unread"`.
 
 See [Digest Scoring](#digest-scoring) for how scores are calculated.
@@ -276,6 +290,126 @@ Samples your inbox across 25 queries and grades the current scoring config. Retu
 | `PASS` | ≤ 25% |
 | `WARN` | 26–40% |
 | `FAIL` | > 40% |
+
+---
+
+### `calendar` — List upcoming events
+
+```bash
+node outlook.js calendar [--days <n>]
+```
+
+Lists calendar events within the next N days (default: 7), sorted chronologically. `--days 1` returns today only; `--days 30` returns the next month.
+
+```bash
+node outlook.js calendar             # next 7 days
+node outlook.js calendar --days 1    # today only
+node outlook.js calendar --days 30   # next month
+```
+
+**Response:**
+
+```json
+{
+  "operation": "calendar",
+  "status": "ok",
+  "results": [
+    {
+      "id": "{\"subject\":\"Weekly Standup\",\"start_time\":\"2026-04-14T09:00:00.000Z\"}",
+      "subject": "Weekly Standup",
+      "organizer": "User, Alpha",
+      "start_time": "2026-04-14T09:00:00.000Z",
+      "end_time": "2026-04-14T09:30:00.000Z",
+      "duration_minutes": 30,
+      "location": "Microsoft Teams Meeting",
+      "is_online_meeting": true,
+      "is_all_day": false,
+      "is_recurring": true,
+      "response_status": "accepted"
+    }
+  ],
+  "count": 1,
+  "error": null
+}
+```
+
+> **Note:** `id` is a composite key — pass it unchanged to `calendar-read`. Do not construct IDs manually. Empty results is not an error.
+
+See [`references/calendar-events.md`](references/calendar-events.md) for full field documentation.
+
+---
+
+### `calendar-read` — Fetch full event details
+
+```bash
+node outlook.js calendar-read <event-id>         # popup card only (fast)
+node outlook.js calendar-read <event-id> --full  # full view: attendees + meeting link
+```
+
+Fetches full event details by opening the event popup. The `id` comes from a prior `calendar` or `calendar-search` result — pass it unchanged.
+
+`--full` navigates to the full event view after the popup (~10s extra). Use it when you need individual attendee names or a reliable Teams/Zoom join URL.
+
+```bash
+node outlook.js calendar-read '{"subject":"Weekly Standup","start_time":"2026-04-14T09:00:00.000Z"}'
+node outlook.js calendar-read '{"subject":"Weekly Standup","start_time":"2026-04-14T09:00:00.000Z"}' --full
+```
+
+**Response:**
+
+```json
+{
+  "operation": "calendar-read",
+  "status": "ok",
+  "results": {
+    "id": "{\"subject\":\"Weekly Standup\",\"start_time\":\"2026-04-14T09:00:00.000Z\"}",
+    "subject": "Weekly Standup",
+    "organizer": "User, Alpha",
+    "start_time": "2026-04-14T09:00:00.000Z",
+    "end_time": "2026-04-14T09:30:00.000Z",
+    "duration_minutes": 30,
+    "location": "Microsoft Teams Meeting",
+    "is_online_meeting": true,
+    "meeting_link": null,
+    "is_all_day": false,
+    "is_recurring": true,
+    "response_status": "unknown",
+    "attendee_summary": "Accepted 8, Didn't respond 3",
+    "attendees": [],
+    "body_text": "Join the weekly standup.\n\nAgenda:\n1. Status updates\n2. Blockers"
+  },
+  "error": null
+}
+```
+
+> **Notes:**
+> - `results` is a single object (not an array).
+> - `attendee_summary` (e.g. `"Accepted 8, Didn't respond 3"`) is always present without `--full`.
+> - `attendees` (individual `{ name, response }` objects) requires `--full`.
+> - `meeting_link` is usually `null` without `--full` — Teams popup body is truncated. Use `is_online_meeting: true` as the reliable Teams signal, and `--full` for the actual join URL.
+> - `response_status` is always `"unknown"` for `calendar-read` — use `calendar` listing to get accepted/declined status.
+
+---
+
+### `calendar-search` — Search calendar events
+
+```bash
+node outlook.js calendar-search "<query>" [--limit <n>]
+```
+
+Searches calendar events using the Outlook search box. Uses plain keywords or `subject:`, `before:`, `after:` operators. Results use the same schema as `calendar`.
+
+```bash
+node outlook.js calendar-search "standup"
+node outlook.js calendar-search "subject:planning after:2026-04-20"
+node outlook.js calendar-search "Q2" --limit 10
+```
+
+**Response:** same schema as `calendar` listing.
+
+> **Note:** `response_status` may be `"unknown"` for many results. Results are filtered to calendar event ARIA patterns but exclusivity is not guaranteed. Zero results is not an error.
+
+See [`references/calendar-events.md`](references/calendar-events.md) for supported operators.
 
 ---
 
@@ -309,6 +443,7 @@ If stdout is empty and exit code is non-zero, a Node.js crash occurred before th
 | `AUTH_REQUIRED` | Session check | Session absent — run `auth` |
 | `OPERATION_FAILED` | Read, digest, auth | Browser timeout or empty snapshot — retry once; if it recurs, surface `error.message` |
 | `MESSAGE_NOT_FOUND` | Read only | Email ID not found — retry with `--query` flag from the original search |
+| `EVENT_NOT_FOUND` | calendar-read only | Event ID not found in calendar view — run `calendar` to get fresh IDs |
 
 Full step-by-step recovery trees are in [`references/error-recovery.md`](references/error-recovery.md).
 
@@ -423,8 +558,12 @@ This means even if a prompt injection in an email body instructed the assistant 
 - **UI coupling** — relies on Outlook web's ARIA structure and CSS selectors. Microsoft UI updates may require selector maintenance.
 - **Subject field** — the Outlook list view doesn't expose subject and sender separately; `search` and `digest` results have an empty `subject`. Use `read` to get the actual subject.
 - **"Today" group** — `digest` reads only the Today group visible in the current inbox view. If your inbox is heavily filtered or grouped differently, results may be incomplete.
+- **Folder scope** — `--folder` supports standard top-level folders only (Inbox, Sent Items, Drafts, Deleted Items, Junk Email, Archive). Custom or nested subfolders may not be found if they are collapsed in the navigation pane.
 - **Multi-tenant** — tested on a single Outlook tenant. Different organizations may have slightly different UI configurations.
 - **Attachments** — names are listed but content is not downloaded.
+- **Calendar meeting links** — Teams join URLs are usually absent from the popup card (`meeting_link: null`). Use `--full` with `calendar-read` to get a reliable link; `is_online_meeting: true` is the reliable Teams signal without the extra round-trip.
+- **Calendar response status** — `calendar-read` always returns `"unknown"` for `response_status`; the popup card doesn't expose the ShowAs field. Use `calendar` listing to get accepted/declined status.
+- **Calendar search scope** — `calendar-search` uses the global Outlook search box; results are filtered to calendar event ARIA patterns but may occasionally include non-calendar items.
 
 ---
 
@@ -438,6 +577,7 @@ lib/
   read.js               Full email reader
   digest.js             Inbox digest with scoring
   tune.js               Scoring calibration
+  calendar.js           Calendar list, read, and search implementation
   output.js             JSON envelope helpers
   run.js                agent-browser wrapper with action policy
 policy-auth.json        Action allowlist for auth operations
@@ -449,6 +589,7 @@ references/
   kql-syntax.md         KQL operator reference
   error-recovery.md     Error code decision trees
   digest-signals.md     Scoring algorithm documentation
+  calendar-events.md    Calendar JSON schema, response_status values, search operators
   outlook-ui.example.md Template for capturing tenant UI snapshots
 ```
 
