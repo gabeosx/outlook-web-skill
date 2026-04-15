@@ -16,6 +16,7 @@
     "press",
     "eval",
     "evaluate",
-    "getbyrole"
+    "getbyrole",
+    "dialog"
   ]
 }

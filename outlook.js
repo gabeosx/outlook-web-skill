@@ -79,5 +79,4 @@ switch (cmd) {
     break;
 }
 
-log('outlook.js: switch complete, calling process.exit(0)');
 process.exit(0);
