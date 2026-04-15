@@ -43,14 +43,3 @@ Full phase details: `.planning/milestones/v1.1-ROADMAP.md`
 | 5. Skill Packaging | v1.0 | 2/2 | Complete | 2026-04-12 |
 | 6. Calendar Capabilities | v1.0 | 4/4 | Complete | 2026-04-15 |
 | 1. Folder Navigation | v1.1 | 2/2 | Complete | 2026-04-15 |
-
-### Phase 1: Review and merge PR #1 — Teams + Copilot subcommands
-
-**Goal:** Review, apply required changes to, and merge PR #1 (feat: add teams and copilot-summary subcommands) with --profile revert and policy file split.
-**Requirements**: TBD
-**Depends on:** Phase 0
-**Plans:** 2 plans
-
-Plans:
-- [ ] 01-01-PLAN.md — Post review, apply code changes (run.js revert, new files, policy split, outlook.js merge)
-- [ ] 01-02-PLAN.md — Update documentation (README, SKILL.md, CLAUDE.md), merge branch, close PR #1
