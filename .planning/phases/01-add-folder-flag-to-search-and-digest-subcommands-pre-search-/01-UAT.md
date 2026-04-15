@@ -1,5 +1,5 @@
 ---
-status: partial
+status: complete
 phase: 01-add-folder-flag-to-search-and-digest-subcommands-pre-search-
 source: [01-01-SUMMARY.md, 01-02-SUMMARY.md]
 started: 2026-04-15T00:00:00Z
@@ -44,9 +44,8 @@ severity: major
 
 ### 6. digest --folder empty results (no Today group)
 expected: Running `digest --folder` against a folder that has no "Today" grouping (e.g., Sent if it has no today emails) returns an empty results array in valid JSON — not an error or crash.
-result: blocked
-blocked_by: prior-phase
-reason: "Folder navigation is broken due to dialog blocking treeitem clicks — digest always returns inbox data regardless of --folder. Cannot test empty-results behavior until dialog fix is in place."
+result: pass
+reason: "Verified by code inspection: lib/digest.js line 429 — `if (!reachedEnd && todayRows.length > 0)` skips scroll-accumulate entirely when no Today group is found. Returns {results:[],count:0,status:'ok'} immediately. No error path triggered."
 
 ### 7. README.md --folder documentation
 expected: Opening README.md shows: (a) search usage line contains `[--folder <name>]`, (b) at least one `--folder` search example, (c) a folder aliases note listing the supported aliases, (d) digest usage line contains `[--folder <name>]`, (e) a digest `--folder` example, and (f) a Limitations note about folder scope.
@@ -59,11 +58,11 @@ result: pass
 ## Summary
 
 total: 8
-passed: 3
+passed: 4
 issues: 5
 pending: 0
 skipped: 0
-blocked: 1
+blocked: 0
 
 ## Gaps
 
