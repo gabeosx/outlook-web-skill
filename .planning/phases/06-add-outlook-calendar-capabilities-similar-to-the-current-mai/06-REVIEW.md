@@ -1,239 +1,235 @@
 ---
-phase: 06-add-outlook-calendar-capabilities
-reviewed: 2026-04-14T00:00:00Z
+phase: 06-add-outlook-calendar-capabilities-similar-to-the-current-mai
+reviewed: 2026-04-15T00:00:00Z
 depth: standard
-files_reviewed: 5
+files_reviewed: 21
 files_reviewed_list:
-  - SKILL.md
   - lib/calendar.js
-  - outlook.js
-  - references/calendar-events.md
   - test/calendar-parser.test.js
+  - references/calendar-events.md
+  - SKILL.md
+  - outlook.js
+  - lib/digest.js
+  - lib/read.js
+  - lib/run.js
+  - lib/search.js
+  - lib/session.js
+  - lib/tune.js
+  - policy-auth.json
+  - policy-read.json
+  - policy-search.json
+  - references/digest-signals.md
+  - references/error-recovery.md
+  - references/kql-syntax.md
+  - references/outlook-ui.example.md
+  - scoring.json.example
+  - .env.example
+  - README.md
 findings:
-  critical: 1
-  warning: 3
-  info: 4
-  total: 8
+  critical: 0
+  warning: 4
+  info: 3
+  total: 7
 status: issues_found
 ---
 
 # Phase 06: Code Review Report
 
-**Reviewed:** 2026-04-14
+**Reviewed:** 2026-04-15T00:00:00Z
 **Depth:** standard
-**Files Reviewed:** 5
+**Files Reviewed:** 21
 **Status:** issues_found
 
 ## Summary
 
-Phase 06 adds three calendar subcommands (`calendar`, `calendar-read`, `calendar-search`) to the existing Outlook web skill. The implementation follows established patterns from the email subcommands. The parser logic (`parseCalendarEventName`) is thorough and is backed by real ARIA-captured test fixtures. Session handling and read-only policy enforcement are correctly reused.
+Phase 06 adds three calendar subcommands (`calendar`, `calendar-read`, `calendar-search`) implemented in `lib/calendar.js`, tested in `test/calendar-parser.test.js`, and documented in `references/calendar-events.md` and `SKILL.md`. The implementation is well-structured, closely mirrors established patterns from `lib/digest.js` and `lib/search.js`, and the parser is thoroughly unit-tested against live-captured ARIA strings.
 
-One critical issue is identified: `buildCalendarClickEval` insufficiently escapes the injected event ID, leaving newline and carriage-return characters unescaped in a dynamically constructed JS string that is sent to `eval`. Three warnings cover: (1) a duplicated `bodyLines.push` path in `parseCalendarDetailSnapshot` that silently discards the second push, (2) asymmetric location accumulation between all-day and timed event parsers, and (3) `start_time` being extracted from the composite key in `buildCalendarClickEval` but never actually used in the match condition. Four info-level items cover dead code, minor pattern gaps, and a documentation inconsistency.
+The prior Phase 06 review (2026-04-14, 5 files) identified CR-01 (incomplete JS string escaping in `buildCalendarClickEval`), WR-01 (duplicated dead `bodyLines.push`), WR-02 (asymmetric all-day location accumulation), and WR-03 (`start_time` extracted but unused in click eval). This review covers the full 21-file diff scope with all pre-existing lib/ files in scope for a lighter pass.
 
----
+**Status of prior findings:** All four prior issues (CR-01, WR-01, WR-02, WR-03) are confirmed **fixed** in the current code. The escaping now uses `JSON.stringify`, the duplicate body-lines push is gone, the all-day branch accumulates multi-part locations, and `startTime` is now used in the click predicate.
 
-## Critical Issues
+This pass identifies four new warnings and three info items. The primary concern is that `parseCalendarDetailSnapshot` does not handle the all-day event date format from the popup card, producing null `start_time`/`end_time` for all-day events opened via `calendar-read`. Secondary concerns are: a double-parse pattern in `runCalendar`'s scroll loop, an organizer firstname heuristic that would misidentify digit-containing location tokens, and a possible combobox ambiguity in `runCalendarSearch`.
 
-### CR-01: Incomplete escaping in `buildCalendarClickEval` allows newline injection into eval string
-
-**File:** `lib/calendar.js:676`
-
-**Issue:** The `safe` variable escapes only `\` and `"` before embedding `eventId` into a concatenated JavaScript string that is passed to `eval`. If `eventId` contains a newline (`\n`) or carriage return (`\r`) character — which can happen if an Outlook event subject contains one — the resulting eval script becomes syntactically invalid or executes unintended statements. While Outlook Web UI subjects rarely contain newlines, the escaping is incomplete and the pattern is unsafe regardless of likelihood.
-
-The composite key is `JSON.stringify({ subject, start_time })`. `JSON.stringify` encodes `\n` as the two-character sequence `\n` (escaped), so in the resulting JSON string the literal is `\\n`, not a bare newline. This means in practice the ID passed to `buildCalendarClickEval` will not contain a bare newline. However, the comment on line 675 says "Escape the event ID for safe embedding in a JS string literal" and the escaping is incomplete against that stated goal — if a caller ever passes a raw event ID string with unescaped newlines (e.g., constructed manually or from a future code path), this will silently break.
-
-**Fix:** Use `JSON.stringify` to produce a fully safe JS string literal rather than manual escaping:
-
-```javascript
-function buildCalendarClickEval(eventId) {
-  // JSON.stringify produces a valid JS string literal including all escape sequences
-  const safeId = JSON.stringify(eventId); // e.g., '"{\"subject\":...}"'
-  return (
-    '(function() {' +
-    'var id = ' + safeId + ';' +  // no manual escaping needed
-    'var parsed; try { parsed = JSON.parse(id); } catch(e) { return "not_found:parse_error"; }' +
-    // ... rest unchanged
-    '})()'
-  );
-}
-```
+The pre-existing files (`digest.js`, `read.js`, `search.js`, `run.js`, `session.js`, `tune.js`, policy files, reference docs) show no new issues.
 
 ---
 
 ## Warnings
 
-### WR-01: Duplicated `bodyLines.push` in `parseCalendarDetailSnapshot` — second push is dead code
+### WR-01: `parseCalendarDetailSnapshot` does not handle all-day popup date format — `start_time` always null for all-day events in `calendar-read`
 
-**File:** `lib/calendar.js:833-854`
+**File:** `lib/calendar.js:869`
+**Issue:** Inside `parseCalendarDetailSnapshot`, the date/time regex at line 869 is:
+```
+/^(\w{3})\s+(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)$/i
+```
+This requires both a start and end time in `H:MM AM - H:MM AM` format. All-day events in the Outlook popup card display a date-only string such as `"Tue 4/14/2026"` or `"Mon 4/13/2026 - Wed 4/15/2026"` with no time component. This string will not match the regex, leaving `dateYear` as `null`.
 
-**Issue:** Inside the `staticMatch` branch of `parseCalendarDetailSnapshot`, there are two separate conditions that both push to `bodyLines`:
+When `dateYear` is `null`:
+- `start_time` and `end_time` remain `null`
+- `duration_minutes` remains `null`
+- `is_all_day` stays `false` (it is declared `const` at line 933 and never set)
+- The returned `id` becomes `JSON.stringify({ subject, start_time: null })` — a broken composite key
 
-- Lines 833-836: `if (organizer) { bodyLines.push(text2); continue; }` — this fires and `continue`s, so the code below is never reached when organizer is set.
-- Lines 851-854: `if (organizer !== null) { bodyLines.push(text2); }` — this condition is structurally unreachable: whenever `organizer !== null` is true at line 852, the `if (organizer)` at line 833 would have already fired and `continue`d.
+An all-day event opened via `node outlook.js calendar-read '<id>'` would return a result with all time fields null and a broken `id`, making the output useless for follow-up operations.
 
-The second push (lines 851-854) is dead code. Any text that arrives between the date/time and organizer fields (but without a matching location condition at line 841) is silently consumed — neither pushed to `bodyLines` nor assigned to `location`.
-
-**Fix:** Remove the duplicate dead-code block at lines 851-854. Consolidate all post-organizer body accumulation in the single block at lines 833-836. If pre-organizer unmatched text needs special handling, add an explicit `else` branch before the organizer check:
-
+**Fix:** Add an all-day date branch before the timed date/time check. First, change the `is_all_day` declaration to `let`:
 ```javascript
-// Inside staticMatch block:
-if (organizer !== null) {
-  // All text after organizer is body text
-  bodyLines.push(text2);
+// Line ~933: change
+const is_all_day = false;
+// to:
+let is_all_day = false;
+```
+Then in the `staticMatch` block add a branch:
+```javascript
+// Before the dtm check:
+// All-day format: "Tue 4/14/2026" or "Mon 4/13/2026 - Wed 4/15/2026"
+const allDayDtm = text2.match(/^\w{3}\s+(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s*-\s*\w{3}\s+\d{1,2}\/\d{1,2}\/\d{4})?$/i);
+if (!dtm && allDayDtm) {
+  dateMonth = parseInt(allDayDtm[1], 10) - 1;
+  dateDay = parseInt(allDayDtm[2], 10);
+  dateYear = parseInt(allDayDtm[3], 10);
+  is_all_day = true;
+  startTimeRaw = null;
+  endTimeRaw = null;
   continue;
 }
-// ... location detection ...
-// (remove the second if (organizer !== null) block below)
 ```
-
----
-
-### WR-02: Asymmetric location handling — all-day branch does not accumulate multi-part locations
-
-**File:** `lib/calendar.js:268-273`
-
-**Issue:** In the timed event branch (lines 354-364), location parts are accumulated with `result.location = result.location + ', ' + part` to handle multi-segment addresses like `"123 Main Street, Anytown, NY 10001"`. The all-day event branch (lines 268-273) only assigns a single part: `result.location = part` with no accumulation. A multi-part location in an all-day event would silently discard all parts after the first.
-
-The test suite happens to use `'Company HQ - Floor 65'` as the all-day location fixture — this is a single comma-free segment, so the test passes. A real all-day event with a multi-part address (e.g., `'123 Main Street, Anytown, NY 10001'`) would produce truncated location output with no error.
-
-**Fix:** Apply the same accumulation logic to the all-day branch:
-
+Also update the ISO 8601 construction block to handle `is_all_day`:
 ```javascript
-// All-day branch (replace lines 268-273):
-} else {
-  // Could be a location (before "By")
-  if (!result.organizer) {
-    if (!result.location) {
-      result.location = part;
-    } else {
-      result.location = result.location + ', ' + part;
-    }
-    result.is_online_meeting = detectOnlineMeeting(result.location);
+if (dateYear !== null) {
+  if (is_all_day) {
+    start_time = new Date(Date.UTC(dateYear, dateMonth, dateDay)).toISOString();
+    end_time = new Date(Date.UTC(dateYear, dateMonth, dateDay + 1)).toISOString();
+    duration_minutes = 1440;
+  } else if (startTimeRaw) {
+    // ... existing timed logic ...
   }
-  idx++;
 }
 ```
 
 ---
 
-### WR-03: `start_time` extracted from composite key in `buildCalendarClickEval` but never used in DOM match
+### WR-02: Double parse of every event row in `runCalendar` — dedup key generation and final results loop both call `parseCalendarEventName`
 
-**File:** `lib/calendar.js:687-693`
+**File:** `lib/calendar.js:527–528, 566–568, 604–619`
+**Issue:** In `runCalendar`, rows are added to `allRows` as raw strings and deduped using a `seenKeys` set. The dedup key is computed by calling `parseCalendarEventName(r)` inline at line 527 (initial seeding) and line 567 (scroll accumulation). Then the final results loop at line 611 calls `parseCalendarEventName(row)` again on every row in `allRows`. Every row is therefore parsed twice — once for dedup, once for output. For a calendar with 100 events over 15 scroll iterations, this is 200+ parse calls where 100 would suffice.
 
-**Issue:** `buildCalendarClickEval` parses both `subject` and `start_time` from the composite key (line 682-683 in the eval script), but the `find` predicate on line 688-690 only checks whether the element's `aria-label` or `textContent` contains `subject` — `startTime` is extracted but never referenced. This means if two events share the same subject at different times (e.g., a recurring event appearing twice in a multi-week view), the first matching button is always clicked, regardless of which `start_time` was intended.
+More subtly: the `seenKeys` set stores the key from the first parse, but there is no guarantee the key produced by the second parse (in the final results loop) is identical if the parsing were ever non-deterministic. Currently it is deterministic, so this is a latent issue rather than an active bug, but the pattern is fragile.
 
-This limitation is documented in SKILL.md ("If multiple events share the same subject, the first matching button is clicked"), but the code creates the false impression that `start_time` participates in the match. The extracted `startTime` variable is dead code in the eval string.
-
-**Fix (option A — preferred):** Use `start_time` in the match. The accessible name contains the time in `"h:MM AM to h:MM AM"` format; extract the time portion from `start_time` and include it in the predicate:
-
+**Fix:** Store parsed objects instead of raw row strings, and deduplicate on the parsed object directly:
 ```javascript
-// In buildCalendarClickEval, update the find predicate:
-'var target = allButtons.find(function(el) {' +
-'  var name = el.getAttribute("aria-label") || el.textContent || "";' +
-'  return name.indexOf(subject) !== -1 && (startTime === "" || name.indexOf(startTime.substring(11,16)) !== -1);' +
-'});'
+// Replace allRows (string[]) with allParsed (object[])
+let allParsed = initialRows.map(r => parseCalendarEventName(r));
+for (const p of allParsed) {
+  seenKeys.add(JSON.stringify({ subject: p.subject, start_time: p.start_time }));
+}
+
+// In scroll loop:
+for (const row of newRows) {
+  const parsed = parseCalendarEventName(row);
+  const key = JSON.stringify({ subject: parsed.subject, start_time: parsed.start_time });
+  if (!seenKeys.has(key)) {
+    allParsed.push(parsed);
+    seenKeys.add(key);
+    addedCount++;
+  }
+}
+
+// Final pass operates directly on allParsed — no second parse needed.
+for (const event of allParsed) {
+  if (event.start_time) { /* filter and push */ }
+}
 ```
 
-**Fix (option B — minimal):** Remove `startTime` extraction to eliminate dead code and make the limitation explicit in the eval comment:
+---
 
+### WR-03: Organizer firstname heuristic uses `\w+` — would misidentify digit-containing location tokens as firstnames
+
+**File:** `lib/calendar.js:267, 351`
+**Issue:** Both the all-day and timed event organizer-parsing branches use `/^\w+$/.test(nextPart)` to detect whether the token following `"By Lastname"` is a firstname. `\w` matches `[A-Za-z0-9_]`. A location token that happens to follow an organizer — such as a room number like `"Room204"` or a conference identifier like `"Conf_A"` — would satisfy this pattern and be incorrectly consumed as the organizer's firstname, producing e.g. `organizer: "Org, Room204"`.
+
+Real firstnames are purely alphabetic (ignoring hyphens and apostrophes), so restricting the test to alphabetic characters eliminates the false-positive class while correctly handling the most common names. The existing tests all use purely alphabetic firstnames, so no tests would need updating.
+
+**Fix (both occurrences at lines 267 and 351):**
 ```javascript
-// Remove the startTime line; add comment explaining single-match limitation
-'var subject = parsed.subject || "";' +
-// startTime is not used — first button matching subject wins (documented limitation)
+// Replace:
+if (/^\w+$/.test(nextPart) && !nextPart.startsWith('By ')) {
+
+// With:
+if (/^[A-Za-z'-]{1,30}$/.test(nextPart) && !nextPart.startsWith('By ')) {
 ```
+This allows hyphens and apostrophes (e.g., `"O'Brien"`, `"Ann-Marie"`) while excluding digits and underscores.
+
+---
+
+### WR-04: `runCalendarSearch` combobox `find` has no `--name` qualifier — may match wrong combobox in calendar view
+
+**File:** `lib/calendar.js:1316, 1318`
+**Issue:** The search batch in `runCalendarSearch` uses `['find', 'role', 'combobox', 'click']` and `['find', 'role', 'combobox', 'fill', query]` without a `--name` argument to disambiguate. This works reliably in `lib/search.js` because it opens the inbox, which has exactly one combobox. However, `runCalendarSearch` first navigates to `/calendar/`, which may expose a date-range combobox or other calendar-specific controls alongside the search combobox. If a second combobox is visible in the calendar view, `find role combobox` would match whichever appears first in the ARIA tree, and the fill/press Enter would execute against the wrong element.
+
+**Fix:** Add `--name` with the confirmed ARIA label for the search combobox:
+```javascript
+['find', 'role', 'combobox', '--name', 'Search for email, meetings, files and more.', 'click'],
+['wait', '500'],
+['find', 'role', 'combobox', '--name', 'Search for email, meetings, files and more.', 'fill', query],
+```
+If the label differs in the calendar context (which requires live verification), add a comment noting the risk and the fallback behavior.
 
 ---
 
 ## Info
 
-### IN-01: `extractCalendarRows` year filter includes `"` as a valid year-trailing character
+### IN-01: Dead variable `organizerLinesConsumed` in `parseCalendarDetailSnapshot`
 
-**File:** `lib/calendar.js:395`
-
-**Issue:** The first year detection branch uses `/, 20\d\d[,"]/.test(name)`. The `"` character would match a quote immediately after a year, which is not a possible character in a calendar event accessible name (these are plain text strings, not quoted). The `"` is dead within this regex branch. This is cosmetic, but could confuse a future maintainer who tries to understand when a `"` would follow a year.
-
-**Fix:** Remove `"` from the character class:
-
-```javascript
-const hasYear = /, 20\d\d[,]/.test(name) || /, 20\d\d$/.test(name) || / 20\d\d[,\s]/.test(name);
-// Or simplified:
-const hasYear = /(, | )20\d\d([,\s"]|$)/.test(name);
-```
-
----
-
-### IN-02: `parseCalendarReadArgs` does not validate that `eventId` is a valid JSON composite key
-
-**File:** `lib/calendar.js:633-644`
-
-**Issue:** `parseCalendarReadArgs` accepts any non-null string as `eventId`. If a caller passes a malformed ID (e.g., a plain subject string instead of the JSON composite key), `buildCalendarClickEval` will call `JSON.parse` on it in the browser context and return `"not_found:parse_error"`, producing an `EVENT_NOT_FOUND` error with a confusing message. A simple validation — checking that the string starts with `{` and can be parsed as JSON with `subject` and `start_time` keys — would produce a clearer `INVALID_ARGS` error at the CLI boundary before any browser is opened.
+**File:** `lib/calendar.js:824, 923`
+**Issue:** `organizerLinesConsumed` is declared at line 824 (`let organizerLinesConsumed = 0`) and incremented at line 923 (`organizerLinesConsumed++`) but never read anywhere. It is scaffolding left over from an earlier implementation and serves no purpose.
 
 **Fix:**
-
 ```javascript
-function parseCalendarReadArgs(argv) {
-  // ... existing arg extraction ...
-  if (!eventId) {
-    outputError('calendar-read', 'INVALID_ARGS', 'Usage: node outlook.js calendar-read <event-id>');
-  }
-  // Validate composite key format
-  try {
-    const parsed = JSON.parse(eventId);
-    if (!parsed.subject || !parsed.start_time) {
-      outputError('calendar-read', 'INVALID_ARGS',
-        'event-id must be the composite key from a prior calendar result (JSON with subject and start_time)');
-    }
-  } catch {
-    outputError('calendar-read', 'INVALID_ARGS',
-      'event-id is not valid JSON — pass the id field from a calendar result unchanged');
-  }
-  return { eventId };
-}
+// Remove:
+let organizerLinesConsumed = 0;
+// ...and the increment:
+organizerLinesConsumed++;
 ```
 
 ---
 
-### IN-03: `parseMonth` returns `0` (January) silently on unrecognized month names
+### IN-02: `parseMonth` silently returns `0` (January) for unrecognized month names
 
-**File:** `lib/calendar.js:43-50`
+**File:** `lib/calendar.js:60–66`
+**Issue:** When `monthName` is not in the months array, `Array.prototype.indexOf` returns `-1`, but the function returns `idx >= 0 ? idx : 0`, mapping the failure to `0` (January). A corrupted or unexpected month name silently produces a wrong date rather than a null result. All month names come from Outlook's ARIA output and are expected to be well-formed, but defensive handling would aid debugging.
 
-**Issue:** `parseMonth` returns `0` when `monthName` is not found in the months array. This means a corrupted or unrecognized month string silently produces January dates rather than a parse failure. The caller `parseCalendarDate` returns `null` only if the full date regex fails — if the regex matches but the month name is misspelled, the date will be wrong. This is a low-risk issue because all month names come from Outlook's ARIA output (which is expected to be well-formed), but it makes debugging harder.
-
-**Fix:** Return `-1` on not-found, and have `parseCalendarDate` treat a `-1` month index as a parse failure:
-
+**Fix:**
 ```javascript
 function parseMonth(monthName) {
-  const months = ['january', /* ... */];
-  return months.indexOf((monthName || '').toLowerCase().trim()); // returns -1 if not found
+  const months = ['january', 'february', /* ... */ 'december'];
+  return months.indexOf((monthName || '').toLowerCase().trim()); // returns -1 on failure
 }
 
-function parseCalendarDate(dateStr) {
-  // ...
-  const month = parseMonth(m[1]);
-  if (month < 0) return null; // unrecognized month
-  // ...
-}
+// In parseCalendarDate:
+const month = parseMonth(m[1]);
+if (month < 0) return null; // unrecognized month — treat as parse failure
 ```
 
 ---
 
-### IN-04: `outlook.js` line 82 — `log()` call and `process.exit(0)` after synchronous dispatch are unreachable for subcommands that call `outputError`
+### IN-03: `attendeeCountText` detection regex may match body sentences beginning with "Accepted" that contain a digit
 
-**File:** `outlook.js:82-83`
+**File:** `lib/calendar.js:886–889`
+**Issue:** The guard `if (/^(Accepted|Declined|Tentative|Didn't respond|No response)/i.test(text2) && /\d/.test(text2))` would match any StaticText beginning with those words that contains any digit — including body sentences like `"Accepted by 3 of 5 stakeholders"` or `"Tentative — slots 2 and 4 are available"`. While this is a low-probability edge case (attendee count lines appear in a predictable position relative to the organizer), the pattern is imprecise.
 
-**Issue:** `outputError` in `lib/output.js` calls `process.exit(1)` internally. For subcommands that fail with an error, `process.exit(1)` fires inside the subcommand, making the `log()` and `process.exit(0)` calls on lines 82-83 of `outlook.js` unreachable in the error path. For successful subcommands that write to stdout and return normally, the `process.exit(0)` is valid. This is not a functional bug, but the comment intent of "switch complete, calling process.exit(0)" implies the log will always execute, which is misleading for error paths.
-
-This is minor — the behavior is correct (exit code 1 on error, 0 on success). No code change is required, but a note in the comment would prevent confusion:
-
+**Fix:** Require the numeric count to immediately follow the keyword (standard Outlook format: `"Accepted 5, Didn't respond 3"`):
 ```javascript
-// Subcommands that call outputError() will have already exited with code 1.
-// This exit(0) is reached only by successful subcommands.
-log('outlook.js: subcommand returned normally, calling process.exit(0)');
-process.exit(0);
+// Replace:
+if (/^(Accepted|Declined|Tentative|Didn't respond|No response)/i.test(text2) && /\d/.test(text2)) {
+
+// With:
+if (/^(Accepted|Declined|Tentative|Didn't respond|No response)\s+\d/i.test(text2)) {
 ```
 
 ---
 
-_Reviewed: 2026-04-14_
+_Reviewed: 2026-04-15T00:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
