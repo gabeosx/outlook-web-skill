@@ -69,15 +69,50 @@ The `calendar-read` subcommand returns a single event object (not an array) in t
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `meeting_link` | string or null | Teams or Zoom join URL, if present in the popup card body text. **Usually `null` for Teams meetings** — Outlook only loads the full event body (which contains the join URL) when the full event view is opened, not in the popup card. Use `is_online_meeting: true` as the reliable signal that a meeting has a join link. |
-| `attendees` | array | List of attendee objects. **Currently always an empty array** — the popup card shows only aggregate attendee counts (e.g., "Accepted 5, Didn't respond 3"), not individual names. Full attendee list requires navigating to the full event page (out of scope). |
+| `meeting_link` | string or null | Teams or Zoom join URL. Without `--full`: usually `null` for Teams meetings — Outlook only loads the full event body (which contains the join URL) when the full event view is opened, not in the popup card. With `--full`: extracted from the full event body DOM, reliable for Teams meetings. Use `is_online_meeting: true` as the reliable signal that a meeting has a join link without `--full`. |
+| `attendee_summary` | string or null | Aggregate attendee count text from the popup card, e.g. `"Accepted 5, Didn't respond 3"`. Always present (does not require `--full`). Null if the popup card did not show attendee counts. |
+| `attendees` | array | List of individual attendee objects `{ name: string, response: string }`. **Empty array unless `--full` is used.** With `--full`, populated from the full event view. `response` is one of `"accepted"`, `"declined"`, `"tentative"`, `"none"`. Parsing is best-effort — attendee ARIA structure varies by Outlook version. |
 | `body_text` | string | Event agenda and notes as plain text. May contain meeting join instructions, agenda items, links, and other event body content. Empty string if no body content was visible. |
+
+**`--full` flag:** Append `--full` to navigate to the full event view after the popup, loading individual attendees and a reliable Teams meeting link. Costs one extra browser round-trip (~10s):
+
+```bash
+node outlook.js calendar-read '<event-id>'          # fast: popup only
+node outlook.js calendar-read '<event-id>' --full   # full: attendees + reliable meeting link
+```
 
 **Note on `response_status` in `calendar-read`:** The event detail popup does not expose the ShowAs/response-status field. `response_status` will always be `"unknown"` in `calendar-read` results. Use `calendar` listing to get `response_status` for an event.
 
 **Note on `results` shape:** For `calendar-read`, `results` is a **single object**, not an array. This matches the `read` subcommand behavior for email.
 
-**Example `calendar-read` result:**
+**Example `calendar-read` result (default, no `--full`):**
+
+```json
+{
+  "operation": "calendar-read",
+  "status": "ok",
+  "results": {
+    "id": "{\"subject\":\"Weekly Standup\",\"start_time\":\"2026-04-14T09:00:00.000Z\"}",
+    "subject": "Weekly Standup",
+    "organizer": "User, Alpha",
+    "start_time": "2026-04-14T09:00:00.000Z",
+    "end_time": "2026-04-14T09:30:00.000Z",
+    "duration_minutes": 30,
+    "location": "Microsoft Teams Meeting",
+    "is_online_meeting": true,
+    "meeting_link": null,
+    "is_all_day": false,
+    "is_recurring": true,
+    "response_status": "unknown",
+    "attendee_summary": "Accepted 8, Didn't respond 3",
+    "attendees": [],
+    "body_text": "Join the weekly standup.\n\nAgenda:\n1. Status updates\n2. Blockers\n3. Planning"
+  },
+  "error": null
+}
+```
+
+**Example `calendar-read --full` result:**
 
 ```json
 {
@@ -96,7 +131,12 @@ The `calendar-read` subcommand returns a single event object (not an array) in t
     "is_all_day": false,
     "is_recurring": true,
     "response_status": "unknown",
-    "attendees": [],
+    "attendee_summary": "Accepted 8, Didn't respond 3",
+    "attendees": [
+      { "name": "User, Alpha", "response": "accepted" },
+      { "name": "User, Beta", "response": "accepted" },
+      { "name": "User, Gamma", "response": "none" }
+    ],
     "body_text": "Join the weekly standup.\n\nAgenda:\n1. Status updates\n2. Blockers\n3. Planning"
   },
   "error": null
@@ -244,11 +284,24 @@ Use these templates when explaining calendar results to the user.
 # Empty calendar
 "No events found in the next [days] days."
 
-# calendar-read result
+# calendar-read result (default)
 "[subject] — [start_time formatted as weekday, Month D, h:MM AM - end_time h:MM AM].
   Organizer: [organizer].
   [If location and not is_online_meeting:] Location: [location].
   [If is_online_meeting and meeting_link:] Online meeting. Join: [meeting_link].
+  [If is_online_meeting and not meeting_link:] Online meeting (Teams/Zoom). To get the join link, use --full.
+  [If attendee_summary:] Attendees: [attendee_summary].
+  [If body_text:] Notes: [body_text first 200 chars]..."
+
+# calendar-read --full result
+"[subject] — [start_time formatted as weekday, Month D, h:MM AM - end_time h:MM AM].
+  Organizer: [organizer].
+  [If meeting_link:] Join: [meeting_link].
+  [If attendees non-empty:] Attendees ([attendees.length]):
+    Accepted: [names of accepted attendees, comma-separated]
+    Tentative: [names of tentative attendees]
+    No response: [names with response "none"]
+  [Else if attendee_summary:] Attendees: [attendee_summary].
   [If body_text:] Notes: [body_text first 200 chars]..."
 ```
 
