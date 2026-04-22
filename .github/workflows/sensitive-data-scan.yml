@@ -2,13 +2,9 @@ name: Sensitive Data Scan
 
 # Blocks commits/PRs that contain personal data captured from live browser sessions:
 # - Files that must never be committed (snapshot.txt, references/outlook-ui.md)
-# - Real Exchange ItemIDs (structural pattern — no secrets needed)
+# - Real Exchange ItemIDs (structural pattern)
 # - Live Outlook mail item URLs (/mail/id/<base64>)
-# - Tenant URL (checked via OUTLOOK_BASE_URL secret — set in repo Settings → Secrets)
-#
-# To enable tenant URL checking:
-#   GitHub repo → Settings → Secrets and variables → Actions → New repository secret
-#   Name: OUTLOOK_BASE_URL   Value: https://your-tenant.example.com
+# - company.com addresses or URLs (email/URL pattern — company domain, not a secret)
 
 on:
   push:
@@ -99,28 +95,26 @@ jobs:
           fi
 
       # -----------------------------------------------------------------------
-      # 4. Tenant URL — checked via secret so the real URL is never in this file.
-      #    grep -rl prints filenames only; matched content is never logged.
-      #    Skip silently if secret is not configured.
+      # 4. company.com in URLs or email addresses
+      #    The company domain is not a secret — it's a public name. Checking for
+      #    it catches real email addresses (@company.com) and tenant URLs
+      #    (*.company.com) without hardcoding the specific subdomain.
+      #    Legitimate code references to company.com as a company name (e.g.
+      #    in comments or docs explaining the project) are fine and won't match
+      #    the URL/email patterns below.
       # -----------------------------------------------------------------------
-      - name: No tenant URL in committed files
-        env:
-          OUTLOOK_BASE_URL: ${{ secrets.OUTLOOK_BASE_URL }}
+      - name: No company.com email addresses or URLs
         run: |
-          if [ -z "$OUTLOOK_BASE_URL" ]; then
-            echo "OUTLOOK_BASE_URL secret not set — skipping tenant URL check"
-            exit 0
-          fi
+          flagged=""
+          while IFS= read -r file; do
+            # Match @company.com (email) or https://...company.com (URL)
+            if grep -qE "(@|https?://[a-z0-9.-]*)company\.com" "$file" 2>/dev/null; then
+              flagged="$flagged $file"
+            fi
+          done < <(git ls-files | grep -E "\.(md|js|json|sh|txt)$")
 
-          # grep -rl: filenames only, never logs the matched content
-          matches=$(grep -rl "$OUTLOOK_BASE_URL" \
-            --include="*.md" --include="*.js" --include="*.json" \
-            --include="*.sh" --include="*.txt" \
-            . 2>/dev/null | grep -v "^\.git/" || true)
-
-          if [ -n "$matches" ]; then
-            echo "::error::Tenant URL found in committed file(s):"
-            echo "$matches"
-            echo "Replace with: https://mail.example.com"
+          if [ -n "$flagged" ]; then
+            echo "::error::company.com email address or URL found in:$flagged"
+            echo "Replace email addresses with user@example.com and tenant URLs with https://mail.example.com"
             exit 1
           fi
