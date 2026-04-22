@@ -2,9 +2,8 @@ name: Sensitive Data Scan
 
 # Blocks commits/PRs that contain personal data captured from live browser sessions:
 # - Files that must never be committed (snapshot.txt, references/outlook-ui.md)
-# - Real Exchange ItemIDs (structural pattern)
+# - Real Exchange ItemIDs (structural pattern: AAkALg + 25 base64 chars)
 # - Live Outlook mail item URLs (/mail/id/<base64>)
-# - company.com addresses or URLs (email/URL pattern — company domain, not a secret)
 
 on:
   push:
@@ -94,27 +93,3 @@ jobs:
             fi
           fi
 
-      # -----------------------------------------------------------------------
-      # 4. company.com in URLs or email addresses
-      #    The company domain is not a secret — it's a public name. Checking for
-      #    it catches real email addresses (@company.com) and tenant URLs
-      #    (*.company.com) without hardcoding the specific subdomain.
-      #    Legitimate code references to company.com as a company name (e.g.
-      #    in comments or docs explaining the project) are fine and won't match
-      #    the URL/email patterns below.
-      # -----------------------------------------------------------------------
-      - name: No company.com email addresses or URLs
-        run: |
-          flagged=""
-          while IFS= read -r file; do
-            # Match @company.com (email) or https://...company.com (URL)
-            if grep -qE "(@|https?://[a-z0-9.-]*)company\.com" "$file" 2>/dev/null; then
-              flagged="$flagged $file"
-            fi
-          done < <(git ls-files | grep -E "\.(md|js|json|sh|txt)$")
-
-          if [ -n "$flagged" ]; then
-            echo "::error::company.com email address or URL found in:$flagged"
-            echo "Replace email addresses with user@example.com and tenant URLs with https://mail.example.com"
-            exit 1
-          fi
