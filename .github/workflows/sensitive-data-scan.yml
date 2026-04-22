@@ -1,0 +1,126 @@
+name: Sensitive Data Scan
+
+# Blocks commits/PRs that contain personal data captured from live browser sessions:
+# - Files that must never be committed (snapshot.txt, references/outlook-ui.md)
+# - Real Exchange ItemIDs (structural pattern — no secrets needed)
+# - Live Outlook mail item URLs (/mail/id/<base64>)
+# - Tenant URL (checked via OUTLOOK_BASE_URL secret — set in repo Settings → Secrets)
+#
+# To enable tenant URL checking:
+#   GitHub repo → Settings → Secrets and variables → Actions → New repository secret
+#   Name: OUTLOOK_BASE_URL   Value: https://your-tenant.example.com
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  scan:
+    name: Scan for personal data
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # 1. Files that must never be tracked
+      # -----------------------------------------------------------------------
+      - name: Blocked files must not be committed
+        run: |
+          blocked=(
+            "snapshot.txt"
+            "references/outlook-ui.md"
+          )
+          fail=0
+          for f in "${blocked[@]}"; do
+            if git ls-files --error-unmatch "$f" 2>/dev/null; then
+              echo "::error file=$f::$f must not be committed — it may contain personal data from live browser captures. Add to .gitignore."
+              fail=1
+            fi
+          done
+          exit $fail
+
+      # -----------------------------------------------------------------------
+      # 2. Exchange ItemIDs — structural pattern, no secrets needed
+      #    Real IDs start with AAkALg followed by 25+ base64 chars.
+      #    Sanitized placeholders always contain EXAMPLE, PLACEHOLDER, or REDACTED.
+      # -----------------------------------------------------------------------
+      - name: No live Exchange ItemIDs
+        run: |
+          # grep -l: print filenames only (never prints the matched content)
+          matches=$(grep -rlE "AAkALg[A-Za-z0-9+/%]{25,}" \
+            --include="*.md" --include="*.js" --include="*.json" \
+            --include="*.sh" --include="*.txt" \
+            . 2>/dev/null | grep -v "^\.git/" || true)
+
+          if [ -n "$matches" ]; then
+            # Re-check: exclude lines that already have a placeholder marker
+            flagged=""
+            while IFS= read -r file; do
+              if grep -qE "AAkALg[A-Za-z0-9+/%]{25,}" "$file" 2>/dev/null && \
+                 grep -E  "AAkALg[A-Za-z0-9+/%]{25,}" "$file" 2>/dev/null \
+                   | grep -qvE "(EXAMPLE|PLACEHOLDER|REDACTED|<REDACTED|\.\.\.)"; then
+                flagged="$flagged $file"
+              fi
+            done <<< "$matches"
+
+            if [ -n "$flagged" ]; then
+              echo "::error::Real Exchange ItemID found in:$flagged"
+              echo "Replace with placeholder: AAkALg...<REDACTED_ITEM_ID>"
+              exit 1
+            fi
+          fi
+
+      # -----------------------------------------------------------------------
+      # 3. Live Outlook mail item URLs — /mail/id/<long-base64>
+      #    Safe references use example.com or contain REDACTED/PLACEHOLDER.
+      # -----------------------------------------------------------------------
+      - name: No live Outlook mail item URLs
+        run: |
+          matches=$(grep -rlE "https://[^/]+/mail/id/[A-Za-z0-9%+/=]{20,}" \
+            --include="*.md" --include="*.js" --include="*.json" \
+            --include="*.sh" --include="*.txt" \
+            . 2>/dev/null | grep -v "^\.git/" || true)
+
+          if [ -n "$matches" ]; then
+            flagged=""
+            while IFS= read -r file; do
+              if grep -E "https://[^/]+/mail/id/[A-Za-z0-9%+/=]{20,}" "$file" 2>/dev/null \
+                   | grep -qvE "(example\.com|REDACTED|PLACEHOLDER)"; then
+                flagged="$flagged $file"
+              fi
+            done <<< "$matches"
+
+            if [ -n "$flagged" ]; then
+              echo "::error::Live Outlook mail item URL found in:$flagged"
+              echo "Replace with: https://mail.example.com/mail/id/AAkALg...<REDACTED_ITEM_ID>"
+              exit 1
+            fi
+          fi
+
+      # -----------------------------------------------------------------------
+      # 4. Tenant URL — checked via secret so the real URL is never in this file.
+      #    grep -rl prints filenames only; matched content is never logged.
+      #    Skip silently if secret is not configured.
+      # -----------------------------------------------------------------------
+      - name: No tenant URL in committed files
+        env:
+          OUTLOOK_BASE_URL: ${{ secrets.OUTLOOK_BASE_URL }}
+        run: |
+          if [ -z "$OUTLOOK_BASE_URL" ]; then
+            echo "OUTLOOK_BASE_URL secret not set — skipping tenant URL check"
+            exit 0
+          fi
+
+          # grep -rl: filenames only, never logs the matched content
+          matches=$(grep -rl "$OUTLOOK_BASE_URL" \
+            --include="*.md" --include="*.js" --include="*.json" \
+            --include="*.sh" --include="*.txt" \
+            . 2>/dev/null | grep -v "^\.git/" || true)
+
+          if [ -n "$matches" ]; then
+            echo "::error::Tenant URL found in committed file(s):"
+            echo "$matches"
+            echo "Replace with: https://mail.example.com"
+            exit 1
+          fi
