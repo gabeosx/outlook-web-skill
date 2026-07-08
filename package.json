@@ -1,6 +1,6 @@
 {
   "name": "outlook-web-skill",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "type": "commonjs",
   "description": "Read-only Outlook web skill for AI assistants via managed Chrome session",

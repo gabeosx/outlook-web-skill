@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1](https://github.com/gabeosx/outlook-web-skill/compare/v1.2.0...v1.2.1) (2026-07-08)
+
+
+### Fixed
+
+* **calendar:** navigate via mini-calendar date buttons instead of missing next-week button ([e3658e4](https://github.com/gabeosx/outlook-web-skill/commit/e3658e4cfc5fcf367681bdc612e79e5e457b9da2))
+* update test require path after outlook-web/ refactor ([17878f6](https://github.com/gabeosx/outlook-web-skill/commit/17878f64b5c45bae805a0a80483446f1ec2e8898))
+
+
+### Changed
+
+* move skill files into outlook-web/ subdirectory ([d0a4ec4](https://github.com/gabeosx/outlook-web-skill/commit/d0a4ec48848b798018ba41fb39b73bd601c032ba))
+
 ## [Unreleased]
 
 ## [1.2.0] - 2026-07-08
