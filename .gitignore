@@ -18,3 +18,6 @@ snapshot.txt
 
 # Claude Code local settings (may contain personal API keys / hooks)
 .claude/
+
+# GSD planning artifacts (internal dev workflow, not part of the skill package)
+.planning/
