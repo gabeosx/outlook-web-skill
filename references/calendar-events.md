@@ -178,16 +178,18 @@ The `calendar` subcommand accepts a `--days N` flag to control the time window:
 node outlook.js calendar               # default: next 7 days
 node outlook.js calendar --days 1      # today's events only
 node outlook.js calendar --days 14     # next two weeks
-node outlook.js calendar --days 30     # next 30 days (may require multiple scroll iterations)
+node outlook.js calendar --days 30     # next 30 days (navigates across multiple weeks)
 ```
 
 - **Default:** `--days 7` — lists events from today through 7 calendar days ahead
 - **`--days 1`:** Today's events only (midnight UTC to midnight UTC the next day)
-- **`--days 30`:** Next 30 days. Outlook's calendar view may not show all events without scrolling; the skill uses a scroll-accumulate loop (up to 15 scroll iterations) to capture all visible events.
+- **`--days 30`:** Next 30 days. The skill navigates through multiple calendar weeks to collect all events.
 - **Start boundary:** Events are included if their `start_time` falls on or after today's midnight UTC.
 - **End boundary:** Events are excluded if their `start_time` is on or after `today + N` days midnight UTC.
 - **Sort order:** Events are returned sorted chronologically by `start_time` ascending.
 - **All-day events:** All-day events for a given day appear alongside timed events for that day, sorted by `start_time` (midnight UTC for all-day events means they sort before timed events on the same date).
+
+**Internal rendering:** The skill navigates to `/calendar/view/week` (Week view) rather than the default `/calendar/` URL (which renders in Day view, showing only today). Week view renders all 7 days of a week in the ARIA tree at once. For `--days > 7`, the skill clicks "Go to next week" to advance through subsequent weeks — `Math.ceil((days - 7) / 7)` additional week navigations are performed. The existing dedup logic (`seenKeys`) prevents duplicate events when the same event appears in multiple snapshots.
 
 **Empty results:** `{ "status": "ok", "results": [], "count": 0 }` with no events is not an error — it means no events were found in the calendar view for the requested window.
 
