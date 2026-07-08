@@ -16,7 +16,7 @@ const {
   parseCalendarArgs,
   parseCalendarSearchArgs,
   extractMeetingLink,
-} = require('../lib/calendar');
+} = require('../outlook-web/lib/calendar');
 
 // ---------------------------------------------------------------------------
 // parseCalendarArgs
