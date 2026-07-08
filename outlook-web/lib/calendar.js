@@ -469,7 +469,7 @@ function parseEventIds(cleaned) {
  * 4.  Session check
  * 5.  Extract event rows from snapshot
  * 6.  Scroll-accumulate within first week (MAX_SCROLLS=15, 2-empty-stop per D-15/T-06-06)
- * 7.  For --days > 7: click "Go to next week" and collect each subsequent week
+ * 7.  For --days > 7: click Sunday date button in mini-calendar to advance each week
  * 8.  Parse each row into D-07 schema
  * 9.  Filter to --days window
  * 10. Sort chronologically
@@ -589,20 +589,54 @@ function runCalendar() {
   }
 
   // Navigate to additional weeks for --days > 7.
-  // Week view renders one full week per page; click "Go to next week" to advance.
+  // Outlook's week view has no "Go to next week" button — navigate by clicking the
+  // target Sunday date in the mini-calendar on the left panel.
+  // Button label format: "{day}, {Month}, {year}" e.g. "13, July, 2026"
   const additionalWeeks = Math.ceil(Math.max(0, days - 7) / 7);
 
+  const MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  // Calculate the Sunday that starts the current visible week (local time)
+  const todayLocal = new Date();
+  const currentWeekSunday = new Date(todayLocal);
+  currentWeekSunday.setDate(todayLocal.getDate() - todayLocal.getDay());
+  currentWeekSunday.setHours(0, 0, 0, 0);
+
+  // Track which month the mini-calendar is currently showing so we know when to advance it
+  let miniCalMonth = currentWeekSunday.getMonth();
+
   for (let week = 0; week < additionalWeeks; week++) {
-    log(`calendar: navigating to next week (week ${week + 2} of ${1 + additionalWeeks})`);
+    // Sunday of the target week (week+1 weeks ahead of the current week)
+    const targetSunday = new Date(currentWeekSunday);
+    targetSunday.setDate(currentWeekSunday.getDate() + (week + 1) * 7);
 
-    const nextWeekBatch = [
-      ['find', 'role', 'button', 'click', '--name', 'Go to next week'],
-      ['wait', '3000'],        // wait for the new week to render
-      ['eval', EVENT_ID_EVAL], // no-op eval (D-08)
-      ['snapshot'],            // MUST be last (D-16)
-    ];
+    const targetDay = targetSunday.getDate();
+    const targetMonth = targetSunday.getMonth();
+    const targetYear = targetSunday.getFullYear();
+    const dateButtonName = `${targetDay}, ${MONTH_NAMES[targetMonth]}, ${targetYear}`;
 
-    const nextWeekResult = runBatch(nextWeekBatch, POLICY);
+    log(`calendar: navigating to week ${week + 2} of ${1 + additionalWeeks} — clicking "${dateButtonName}"`);
+
+    const nextWeekCommands = [];
+
+    // If the target week starts in a new month, advance the mini-calendar first
+    if (targetMonth !== miniCalMonth) {
+      const nextMonthLabel = `Go to next month ${MONTH_NAMES[targetMonth]}`;
+      log(`calendar: advancing mini-calendar — clicking "${nextMonthLabel}"`);
+      nextWeekCommands.push(['find', 'role', 'button', 'click', '--name', nextMonthLabel]);
+      nextWeekCommands.push(['wait', '1000']);
+      miniCalMonth = targetMonth;
+    }
+
+    nextWeekCommands.push(['find', 'role', 'button', 'click', '--name', dateButtonName]);
+    nextWeekCommands.push(['wait', '3000']);    // wait for the new week to render
+    nextWeekCommands.push(['eval', EVENT_ID_EVAL]); // no-op eval (D-08)
+    nextWeekCommands.push(['snapshot']);             // MUST be last (D-16)
+
+    const nextWeekResult = runBatch(nextWeekCommands, POLICY);
 
     if (nextWeekResult.status !== 0) {
       log(`calendar: next-week navigation failed at week ${week + 2} — stopping week collection`);
