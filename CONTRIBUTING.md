@@ -36,12 +36,21 @@ node --test test/*.test.js
 
 Tests cover the pure-JS parsing logic (calendar event names, email row parsing, folder normalization, etc.) and do not require a live Outlook session.
 
-## Versioning
+## Versioning and releases
 
-This project follows [Semantic Versioning](https://semver.org/):
+Releases are fully automated via [Release Please](https://github.com/googleapis/release-please). You never need to run `git tag` or `gh release create` manually.
 
-- **Patch** (`x.y.Z`) — bug fixes that don't change the JSON output schema
-- **Minor** (`x.Y.0`) — new subcommands or new fields added to existing schemas (backwards-compatible)
-- **Major** (`X.0.0`) — breaking changes to the JSON output schema or subcommand interface
+**How it works:**
+1. Commits to `main` use [Conventional Commits](https://www.conventionalcommits.org/) — `feat:`, `fix:`, `security:`, `chore:`, etc.
+2. After each push to `main`, a "chore: release vX.Y.Z" PR is automatically opened or updated with a bumped `package.json` version and `CHANGELOG.md` entry.
+3. Merging that PR creates the git tag and GitHub Release automatically.
 
-Each release gets a git tag and a GitHub Release with release notes drawn from `CHANGELOG.md`.
+**Semver impact by commit type:**
+
+| Prefix | Version bump | In release notes |
+|--------|-------------|-----------------|
+| `feat:` | minor | yes |
+| `fix:` | patch | yes |
+| `security:` | patch | yes |
+| `feat!:` or `BREAKING CHANGE:` footer | major | yes |
+| `chore:`, `ci:`, `docs:`, `test:` | none | no |

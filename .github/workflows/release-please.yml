@@ -1,0 +1,31 @@
+name: Release Please
+
+# Runs on every push to main. Release Please reads conventional commits,
+# keeps an open "chore: release vX.Y.Z" PR with an updated CHANGELOG.md
+# and package.json version bump. Merging that PR creates the git tag and
+# GitHub Release automatically — no manual tagging or gh release create needed.
+#
+# Conventional commit types and their semver impact:
+#   feat:     → minor bump  (new backwards-compatible feature)
+#   fix:      → patch bump  (bug fix)
+#   feat!: or BREAKING CHANGE footer → major bump
+#   chore/ci/docs/test: → no release triggered
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
