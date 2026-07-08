@@ -5,7 +5,7 @@
 scoring.json
 
 # Tenant-specific UI reference (capture sessions may contain personal data)
-references/outlook-ui.md
+**/references/outlook-ui.md
 
 # Browser session profile (contains auth cookies — never commit)
 .outlook-web-profile/

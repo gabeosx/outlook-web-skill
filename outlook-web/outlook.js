@@ -3,10 +3,12 @@ const fs = require('fs');
 const os = require('os');
 const { outputError, log } = require('./lib/output');
 
-// Auto-load .env from project root if present (shell env vars take precedence)
-const envFile = fs.existsSync(__dirname + '/.env')
-  ? fs.readFileSync(__dirname + '/.env', 'utf8')
-  : '';
+// Auto-load .env from skill directory if present (shell env vars take precedence)
+const envPath = __dirname + '/.env';
+if (!fs.existsSync(envPath)) {
+  process.stderr.write(`[outlook-skill] No .env found — copy .env.example to ${envPath} and fill in your values.\n`);
+}
+const envFile = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
 for (const line of envFile.split('\n')) {
   const t = line.trim();
   if (!t || t.startsWith('#')) continue;

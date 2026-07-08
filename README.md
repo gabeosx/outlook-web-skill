@@ -77,7 +77,7 @@ Uses [`@vercel/agent-browser`](https://github.com/vercel-labs/agent-browser) to 
 
 ```bash
 npx skills add gabeosx/outlook-web-skill
-cd .claude/skills/outlook-web-skill
+cd .agents/skills/outlook-web
 cp .env.example .env
 ```
 
@@ -85,7 +85,7 @@ cp .env.example .env
 
 ```bash
 git clone https://github.com/gabeosx/outlook-web-skill
-cd outlook-web-skill
+cd outlook-web-skill/outlook-web
 cp .env.example .env
 ```
 
@@ -637,7 +637,7 @@ npx skills add gabeosx/outlook-web-skill
 npx skills add gabeosx/outlook-web-skill --global
 ```
 
-This copies the skill files into `.claude/skills/outlook-web-skill/` (or the equivalent directory for your AI assistant). Then complete the [Setup](#setup) steps to configure `.env` and authenticate — the CLI files are already in place.
+This copies the skill files into `.agents/skills/outlook-web/` (or the equivalent directory for your AI assistant). Then complete the [Setup](#setup) steps to configure `.env` and authenticate — the CLI files are already in place.
 
 Manage installed skills:
 ```bash
@@ -648,17 +648,19 @@ npx skills remove outlook-web-skill          # uninstall
 
 ### Manual install (Claude Code)
 
-`SKILL.md` at the repo root is a Claude Code skill descriptor. Place it (and the `references/` directory) at `.claude/skills/outlook-web/` inside your Claude Code project, with `outlook.js` and `lib/` accessible from the same directory:
+`SKILL.md` lives in the `outlook-web/` subdirectory of the repo. Place the entire `outlook-web/` directory at `.agents/skills/outlook-web/` inside your project (copy or symlink), then run setup from there:
 
 ```
 your-project/
-  .claude/
+  .agents/
     skills/
       outlook-web/
-        SKILL.md          ← skill descriptor (copy or symlink)
-        references/       ← reference docs (copy or symlink)
-        outlook.js        ← symlink to the CLI entry point
-        lib/              ← symlink to the lib directory
+        SKILL.md          ← skill descriptor
+        references/       ← reference docs
+        outlook.js        ← CLI entry point
+        lib/              ← implementation modules
+        policy-*.json     ← action policies
+        .env.example      ← copy to .env and configure
 ```
 
 ### Other AI assistants (Codex, Gemini, etc.)
@@ -694,31 +696,35 @@ This means even if a prompt injection in an email body instructed the assistant 
 ## Project structure
 
 ```
-outlook.js              Entry point — env validation, subcommand dispatch
-lib/
-  session.js            Auth flow and session management
-  search.js             KQL search implementation
-  read.js               Full email reader
-  digest.js             Inbox digest with scoring
-  tune.js               Scoring calibration
-  calendar.js           Calendar list, read, and search implementation
-  teams.js              Teams activity feed, mentions, unread chats
-  copilot.js            Copilot-in-Teams summary generation
-  output.js             JSON envelope helpers
-  run.js                agent-browser wrapper with action policy
-policy-auth.json        Action allowlist for auth operations
-policy-read.json        Action allowlist for read operations
-policy-search.json      Action allowlist for search/digest operations
-policy-teams.json       Action allowlist for teams operations
-policy-copilot.json     Action allowlist for copilot-summary operations
-scoring.json.example    Default scoring config — copy to scoring.json
-SKILL.md                Claude Code skill descriptor
-references/
-  kql-syntax.md         KQL operator reference
-  error-recovery.md     Error code decision trees
-  digest-signals.md     Scoring algorithm documentation
-  calendar-events.md    Calendar JSON schema, response_status values, search operators
-  outlook-ui.example.md Template for capturing tenant UI snapshots
+outlook-web/                Skill directory — this is what npx skills installs
+  outlook.js                Entry point — env validation, subcommand dispatch
+  lib/
+    session.js              Auth flow and session management
+    search.js               KQL search implementation
+    read.js                 Full email reader
+    digest.js               Inbox digest with scoring
+    tune.js                 Scoring calibration
+    calendar.js             Calendar list, read, and search implementation
+    teams.js                Teams activity feed, mentions, unread chats
+    copilot.js              Copilot-in-Teams summary generation
+    output.js               JSON envelope helpers
+    run.js                  agent-browser wrapper with action policy
+  policy-auth.json          Action allowlist for auth operations
+  policy-read.json          Action allowlist for read operations
+  policy-search.json        Action allowlist for search/digest operations
+  policy-teams.json         Action allowlist for teams operations
+  policy-copilot.json       Action allowlist for copilot-summary operations
+  scoring.json.example      Default scoring config — copy to scoring.json
+  .env.example              Environment variable template — copy to .env
+  SKILL.md                  Claude Code skill descriptor
+  references/
+    kql-syntax.md           KQL operator reference
+    error-recovery.md       Error code decision trees
+    digest-signals.md       Scoring algorithm documentation
+    calendar-events.md      Calendar JSON schema, response_status values, search operators
+    outlook-ui.example.md   Template for capturing tenant UI snapshots
+README.md                   Repo documentation
+CHANGELOG.md
 ```
 
 ---
