@@ -50,7 +50,7 @@ function fetchActivityFeed() {
   // Step 1: Navigate and wait for Teams SPA to load
   const navResult = runBatch([
     ['open', teamsUrl],
-    ['wait', '6000'],
+    ['wait', '10000'],
   ], POLICY);
 
   if (navResult.status !== 0) {
@@ -143,7 +143,7 @@ function navigateToActivity(currentSnapshotText) {
 
   const result = runBatch([
     ['click', ref],
-    ['wait', '3000'],
+    ['wait', '5000'],
     ['snapshot'],
   ], POLICY);
 
@@ -211,7 +211,7 @@ function extractActivityItems(text) {
 
   for (const line of text.split('\n')) {
     // Match listitem or option with quoted accessible name
-    const m = line.match(/^\s*-\s+(listitem|option|generic)\s+"(.+?)"\s*(?:\[.*)?$/);
+    const m = line.match(/^\s*-\s+(listitem|option)\s+"(.+?)"\s*(?:\[.*)?$/);
     if (!m) continue;
 
     const role = m[1];
@@ -310,6 +310,7 @@ function parseActivityItem(rawText, type) {
     const lastPart = parts[parts.length - 1].trim();
     if (/^\d{1,2}:\d{2}\s*[AP]M$/i.test(lastPart) ||
         /^\d+[hmd]\s*ago$/i.test(lastPart) ||
+        /^\d+\s+(?:hour|minute|day|week)s?\s+ago$/i.test(lastPart) ||
         /^(yesterday|today|just now)/i.test(lastPart) ||
         /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i.test(lastPart) ||
         /^\d{1,2}\/\d{1,2}/i.test(lastPart)) {
@@ -350,10 +351,7 @@ function parseActivityItem(rawText, type) {
  * @returns {{ name: string, preview: string, time: string|null, has_unread: boolean }}
  */
 function parseChatItem(rawText, hasUnread) {
-  let parts = rawText.split(/\s+[—–]\s+/);
-  if (parts.length < 2) {
-    parts = rawText.split(/,\s*/);
-  }
+  const parts = rawText.split(/\s+[—–]\s+/);
 
   const name = parts[0] ? parts[0].trim() : rawText;
   let preview = '';
@@ -422,17 +420,11 @@ function runTeams() {
     return;
   }
 
-  // Activity or mentions mode — navigate to Activity feed
-  // Check if we're already on Activity (initial load may land there)
-  const hasActivityContent = snapshotText.includes('mentioned') ||
-                              snapshotText.includes('replied') ||
-                              snapshotText.includes('sent a message');
-
-  if (!hasActivityContent) {
-    const activityResult = navigateToActivity(snapshotText);
-    if (activityResult && activityResult.snapshotText) {
-      snapshotText = activityResult.snapshotText;
-    }
+  // Activity or mentions mode — always navigate to Activity feed
+  // Teams may land on Chat view; we must click Activity to get the right snapshot
+  const activityResult = navigateToActivity(snapshotText);
+  if (activityResult && activityResult.snapshotText) {
+    snapshotText = activityResult.snapshotText;
   }
 
   const activityItems = extractActivityItems(snapshotText);
