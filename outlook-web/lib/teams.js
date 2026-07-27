@@ -141,15 +141,37 @@ function navigateToActivity(currentSnapshotText) {
   }
   log(`teams: clicking Activity by ref ${ref}`);
 
-  const result = runBatch([
+  let result = runBatch([
     ['click', ref],
     ['wait', '5000'],
     ['snapshot'],
   ], POLICY);
 
+  // If click was blocked (e.g. loading screen still covering button), wait for
+  // Teams to settle, re-snapshot for fresh refs, and retry once.
   if (result.status !== 0) {
-    log('teams: activity navigation batch failed');
-    return null;
+    log('teams: activity click blocked — waiting 8 s for loading screen to clear, then retrying');
+    const refreshResult = runBatch([
+      ['wait', '8000'],
+      ['snapshot'],
+    ], POLICY);
+    if (refreshResult.status !== 0) return null;
+    const refreshed = stripContentBoundaries(refreshResult.stdout);
+    if (!refreshed.trim()) return null;
+
+    const retryRef = findNavRef(refreshed, 'Activity');
+    if (!retryRef) return null;
+    log(`teams: retrying Activity click with ref ${retryRef}`);
+
+    result = runBatch([
+      ['click', retryRef],
+      ['wait', '5000'],
+      ['snapshot'],
+    ], POLICY);
+    if (result.status !== 0) {
+      log('teams: activity navigation retry also failed');
+      return null;
+    }
   }
 
   const cleaned = stripContentBoundaries(result.stdout);
@@ -174,7 +196,7 @@ function navigateToChat(currentSnapshotText) {
 
   const result = runBatch([
     ['click', ref],
-    ['wait', '3000'],
+    ['wait', '5000'],
     ['snapshot'],
   ], POLICY);
 
