@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/gabeosx/outlook-web-skill/compare/v1.2.1...v1.3.0) (2026-07-27)
+
+
+### Added
+
+* **teams:** add --chats mode and teams-read subcommand ([d3790f3](https://github.com/gabeosx/outlook-web-skill/commit/d3790f30feac4f3813debd0512cbf4d64fedba0b))
+
+
+### Fixed
+
+* **teams:** fix five parser bugs and add unit tests ([60422c8](https://github.com/gabeosx/outlook-web-skill/commit/60422c8546f0ed9b213ce6310c3abee199b175c4))
+* **teams:** fix four parser bugs found during live browser testing ([ff7238c](https://github.com/gabeosx/outlook-web-skill/commit/ff7238cf95ae18e42b559a500926adf2bf6b9852))
+* **teams:** retry Activity navigation when loading screen blocks click ([cad92ec](https://github.com/gabeosx/outlook-web-skill/commit/cad92ec9176fc1d2aa1504d6b25a0e89e30bc657))
+
 ## [1.2.1](https://github.com/gabeosx/outlook-web-skill/compare/v1.2.0...v1.2.1) (2026-07-08)
 
 
