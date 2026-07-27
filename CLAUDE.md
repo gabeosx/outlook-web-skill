@@ -65,7 +65,19 @@ A Claude Code skill (or set of skills) that gives a personal assistant Claude Co
 <!-- GSD:conventions-start source:CONVENTIONS.md -->
 ## Conventions
 
-Conventions not yet established. Will populate as patterns emerge during development.
+### Parser / ARIA tests must use real observed snapshots
+
+When writing tests for any parser that reads ARIA snapshot output (Teams activity feed, chat list, conversation panel, Outlook mail list, calendar, etc.), test inputs **must be sourced from actual browser snapshots**, not hand-crafted strings based on assumptions about what the UI produces.
+
+**Why:** Bugs 2a, 2b, and 3 in `lib/teams.js` all came from tests that confirmed the code matched an assumed ARIA format. The assumptions were wrong (wrong roles, wrong delimiters, time embedded in wrong segment), but the tests passed because they were written against the same assumptions. The bugs only surfaced during a real browser run.
+
+**How to comply:**
+1. Before writing a parser, capture at least one real snapshot: run the subcommand with `LOG_LEVEL=debug` or add a temporary `process.stderr.write(snapshotText)` and collect the raw output.
+2. Paste representative lines from that output into the test file as the fixture strings.
+3. Annotate each fixture with a comment like `// captured 2026-07-27 from Teams web, Chrome 126`.
+4. If multiple format variants exist (e.g. DM vs channel mention), capture and test each.
+
+Hand-crafted strings are only acceptable for testing pure logic that has no dependency on external UI structure (e.g. `parseArgs`, `findNavRef` given a known format).
 <!-- GSD:conventions-end -->
 
 <!-- GSD:architecture-start source:ARCHITECTURE.md -->

@@ -311,7 +311,7 @@ function extractChatItems(text) {
   const seen = new Set();
 
   for (const line of text.split('\n')) {
-    const m = line.match(/^\s*-\s+(listitem|option)\s+"(.+?)"\s*(?:\[.*)?$/);
+    const m = line.match(/^\s*-\s+(listitem|option|treeitem|row|article)\s+"(.+?)"\s*(?:\[.*)?$/);
     if (!m) continue;
 
     const name = m[2].trim();
@@ -323,10 +323,15 @@ function extractChatItems(text) {
     if (seen.has(key)) continue;
     seen.add(key);
 
-    // Unread detection: accessible name often contains "unread" or a badge count
-    const hasUnread = /\bunread\b/i.test(name) || /\b\d+\s*new\b/i.test(name);
+    // Unread detection: accessible name or badge count in name
+    const hasUnread = /\bunread\b/i.test(name) || /\b\d+\s*new\b/i.test(name) || /\b\d+\s*unread\b/i.test(name);
 
     items.push({ raw_text: name, has_unread: hasUnread });
+  }
+
+  if (items.length === 0) {
+    log('teams: extractChatItems found 0 items — raw snapshot excerpt follows (stderr)');
+    process.stderr.write('[teams-debug] extractChatItems: 0 items. Snapshot excerpt:\n' + text.slice(0, 2000) + '\n');
   }
 
   log(`teams: extractChatItems found ${items.length} items`);
@@ -369,26 +374,65 @@ function parseActivityItem(rawText, type) {
     }
   }
 
-  // First part contains sender (and possibly channel context)
   const firstPart = parts[0] || '';
   let sender = firstPart;
   let channel = null;
+  let preview;
 
-  // Extract "in Channel" pattern
-  const inMatch = firstPart.match(/^(.+?)\s+(?:mentioned you |replied .+?|sent a message )?in\s+(.+)/i);
-  if (inMatch) {
-    sender = inMatch[1].trim();
-    channel = inMatch[2].trim();
+  if (parts.length >= 2) {
+    // Delimiter found: first part is "Sender [action] [in Channel]", rest is preview
+    preview = parts.slice(1).join(' — ').trim();
+
+    const inMatch = firstPart.match(/^(.+?)\s+(?:mentioned you |replied .+?|sent a message )?in\s+(.+)/i);
+    if (inMatch) {
+      sender = inMatch[1].trim();
+      // Strip a trailing time that Teams sometimes embeds in the channel segment
+      channel = inMatch[2]
+        .replace(/\s+\d{1,2}:\d{2}\s*[AP]M\s*$/i, '')
+        .replace(/\s+\d+[hmd]\s*ago\s*$/i, '')
+        .replace(/\s+(yesterday|today|just now)\s*$/i, '')
+        .trim() || null;
+      if (channel && /^chat with you/i.test(channel)) channel = null;
+    } else {
+      const kwMatch = firstPart.match(/^(.+?)\s+(?:mentioned|replied|sent|reacted|liked)/i);
+      if (kwMatch) sender = kwMatch[1].trim();
+    }
   } else {
-    // Try simpler: just the first word/name before a keyword
-    const kwMatch = firstPart.match(/^(.+?)\s+(?:mentioned|replied|sent|reacted|liked)/i);
-    if (kwMatch) {
-      sender = kwMatch[1].trim();
+    // No delimiter — try splitting on action phrases as fallback
+    // Strip trailing time first so the channel/preview split is unambiguous
+    let tailTime = null;
+    let textForParsing = rawText;
+    const trailingTime = rawText.match(/\s+(\d{1,2}:\d{2}\s*[AP]M|\d+[hmd]\s*ago|\d+\s+(?:hour|minute|day|week)s?\s+ago|yesterday|today|just now)$/i);
+    if (trailingTime) {
+      tailTime = trailingTime[1];
+      textForParsing = rawText.slice(0, rawText.length - trailingTime[0].length);
+    }
+
+    // DM pattern: "in chat with you" means no real channel
+    const dmMatch = textForParsing.match(
+      /^(.+?)\s+(mentioned you|replied to .+?|sent a message|reacted to)\s+in chat with you\s*(.*)$/i
+    );
+    if (dmMatch) {
+      sender = dmMatch[1].trim();
+      channel = null;
+      preview = dmMatch[3].trim();
+      time = tailTime;
+    } else {
+      const actionMatch = textForParsing.match(
+        /^(.+?)\s+(mentioned you|replied to .+?|sent a message|reacted to)\s+(?:in\s+(.+?)\s+)?(.*)$/i
+      );
+      if (actionMatch) {
+        sender = actionMatch[1].trim();
+        channel = actionMatch[3]?.trim() || null;
+        preview = actionMatch[4] ? actionMatch[4].trim() : '';
+        time = tailTime;
+      } else {
+        const kwMatch = rawText.match(/^(.+?)\s+(?:mentioned|replied|sent|reacted|liked)/i);
+        if (kwMatch) sender = kwMatch[1].trim();
+        preview = '';
+      }
     }
   }
-
-  // Preview is the middle parts joined
-  const preview = parts.length > 1 ? parts.slice(1).join(' — ').trim() : '';
 
   return { sender, channel, preview, time, type };
 }
@@ -433,7 +477,7 @@ function parseChatItem(rawText, hasUnread) {
 function findChatItemRef(snapshotText, query) {
   const q = query.toLowerCase();
   for (const line of snapshotText.split('\n')) {
-    const m = line.match(/^\s*-\s+(listitem|option)\s+"(.+?)"\s*\[([^\]]*)\]/);
+    const m = line.match(/^\s*-\s+(listitem|option|treeitem|row|article)\s+"(.+?)"\s*\[([^\]]*)\]/);
     if (!m) continue;
     const name = m[2].trim();
     if (/^(Activity|Chat|Teams|Calendar|Calls|Files|More|Search|Settings)/i.test(name)) continue;
@@ -593,7 +637,20 @@ function runTeams() {
     snapshotText = activityResult.snapshotText;
   }
 
-  const activityItems = extractActivityItems(snapshotText);
+  let activityItems = extractActivityItems(snapshotText);
+
+  // Teams may not have finished rendering on cold start — retry once if empty
+  if (activityItems.length === 0) {
+    log('teams: no activity items on first snapshot — waiting 5s and retrying');
+    const retryResult = runBatch([['wait', '5000'], ['snapshot']], POLICY);
+    if (retryResult.status === 0) {
+      const retrySnap = stripContentBoundaries(retryResult.stdout);
+      if (retrySnap.trim()) {
+        snapshotText = retrySnap;
+        activityItems = extractActivityItems(snapshotText);
+      }
+    }
+  }
 
   // Filter to mentions if requested
   let filtered = activityItems;

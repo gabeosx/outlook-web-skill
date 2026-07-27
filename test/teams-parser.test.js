@@ -8,6 +8,7 @@ const {
   findNavRef,
   findChatItemRef,
   extractActivityItems,
+  extractChatItems,
   extractMessages,
   parseActivityItem,
   parseChatItem,
@@ -220,6 +221,34 @@ describe('parseActivityItem', () => {
     const result = parseActivityItem('Bob replied to your message in General — ok — 2 days ago', 'reply');
     assert.equal(result.time, '2 days ago');
   });
+
+  it('maps "chat with you" channel to null when time is embedded in channel segment (Bug 3a)', () => {
+    const result = parseActivityItem('Magarino Santos, Gabriel mentioned you in chat with you 12:51 PM — Hi! Albert, quick call?', 'mention');
+    assert.equal(result.sender, 'Magarino Santos, Gabriel');
+    assert.equal(result.channel, null);
+    assert.ok(result.preview.includes('Hi! Albert'));
+  });
+
+  it('strips embedded time from channel name (Bug 3a)', () => {
+    const result = parseActivityItem('Alice mentioned you in General 10:30 AM — hello — 10:30 AM', 'mention');
+    assert.equal(result.channel, 'General');
+    assert.equal(result.time, '10:30 AM');
+  });
+
+  it('extracts sender, preview and time when no delimiter present (Bug 3b — DM)', () => {
+    const result = parseActivityItem('Magarino Santos, Gabriel mentioned you in chat with you Hi! Albert, quick call 12:51 PM', 'mention');
+    assert.equal(result.sender, 'Magarino Santos, Gabriel');
+    assert.equal(result.channel, null);
+    assert.ok(result.preview.includes('Hi! Albert'));
+    assert.equal(result.time, '12:51 PM');
+  });
+
+  it('extracts channel and preview when no delimiter present (Bug 3b — channel mention)', () => {
+    const result = parseActivityItem('Alice mentioned you in General hey check this out 2h ago', 'mention');
+    assert.equal(result.sender, 'Alice');
+    assert.equal(result.channel, 'General');
+    assert.equal(result.time, '2h ago');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -323,6 +352,65 @@ describe('findChatItemRef', () => {
   it('skips navigation items even if query matches', () => {
     const result = findChatItemRef(snapshot, 'Activity');
     assert.equal(result, null);
+  });
+
+  it('finds ref when chat uses treeitem role (Bug 2a)', () => {
+    const treesnapshot = `
+      - treeitem "Alice Smith — hey are you free? — 10:30 AM" [ref=e20, cursor:pointer]
+      - treeitem "Bob Jones — sounds good — Yesterday" [ref=e21, cursor:pointer]
+    `;
+    const result = findChatItemRef(treesnapshot, 'alice');
+    assert.ok(result);
+    assert.equal(result.ref, '@e20');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// extractChatItems — role selector (Bug 2a) and unread detection (Bug 2b)
+// ---------------------------------------------------------------------------
+
+describe('extractChatItems', () => {
+  it('extracts items with treeitem role (Bug 2a)', () => {
+    const snapshot = `
+      - treeitem "Alice Smith — hey are you free? — 10:30 AM"
+      - treeitem "Bob Jones — sounds good — Yesterday"
+    `;
+    const items = extractChatItems(snapshot);
+    assert.equal(items.length, 2);
+  });
+
+  it('extracts items with row role (Bug 2a)', () => {
+    const snapshot = `
+      - row "Carol Davis — let me check — 9:15 AM"
+    `;
+    const items = extractChatItems(snapshot);
+    assert.equal(items.length, 1);
+  });
+
+  it('extracts items with article role (Bug 2a)', () => {
+    const snapshot = `
+      - article "Dave Miller — sounds good — 3h ago"
+    `;
+    const items = extractChatItems(snapshot);
+    assert.equal(items.length, 1);
+  });
+
+  it('detects unread via "N unread" pattern (Bug 2b)', () => {
+    const snapshot = `
+      - listitem "Alice Smith — hey — 10:30 AM 3 unread"
+    `;
+    const items = extractChatItems(snapshot);
+    assert.equal(items.length, 1);
+    assert.equal(items[0].has_unread, true);
+  });
+
+  it('marks read items as has_unread=false', () => {
+    const snapshot = `
+      - listitem "Bob Jones — sounds good — Yesterday"
+    `;
+    const items = extractChatItems(snapshot);
+    assert.equal(items.length, 1);
+    assert.equal(items[0].has_unread, false);
   });
 });
 
