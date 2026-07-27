@@ -53,7 +53,7 @@ if (process.env.OUTLOOK_BASE_URL) {
 }
 
 // ── Step 4: Subcommand dispatch ──
-const VALID_COMMANDS = ['auth', 'search', 'read', 'digest', 'tune', 'calendar', 'calendar-read', 'calendar-search', 'teams', 'copilot-summary'];
+const VALID_COMMANDS = ['auth', 'search', 'read', 'digest', 'tune', 'calendar', 'calendar-read', 'calendar-search', 'teams', 'teams-read', 'copilot-summary'];
 const cmd = process.argv[2];
 
 if (!cmd || !VALID_COMMANDS.includes(cmd)) {
@@ -90,6 +90,9 @@ switch (cmd) {
     break;
   case 'teams':
     require('./lib/teams').runTeams();
+    break;
+  case 'teams-read':
+    require('./lib/teams').runTeamsRead();
     break;
   case 'copilot-summary':
     require('./lib/copilot').runCopilotSummary();

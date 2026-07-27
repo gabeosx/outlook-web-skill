@@ -8,12 +8,13 @@ const POLICY = 'policy-teams.json';
 
 /**
  * Parse process.argv for teams subcommand arguments.
- * Expects: node outlook.js teams [--mentions] [--unread] [--limit N]
+ * Expects: node outlook.js teams [--mentions] [--unread] [--chats] [--limit N]
  *
  * Modes:
  *   (default)   — Activity feed (all recent notifications)
  *   --mentions  — Filter to @mentions only
  *   --unread    — Unread chats only
+ *   --chats     — All recent chats (read + unread)
  *
  * @param {string[]} argv - process.argv
  * @returns {{ mode: string, limit: number }}
@@ -28,6 +29,8 @@ function parseArgs(argv) {
       mode = 'mentions';
     } else if (args[i] === '--unread') {
       mode = 'unread';
+    } else if (args[i] === '--chats') {
+      mode = 'chats';
     } else if (args[i] === '--limit' && i + 1 < args.length) {
       const n = parseInt(args[i + 1], 10);
       if (!isNaN(n) && n > 0) limit = n;
@@ -36,6 +39,31 @@ function parseArgs(argv) {
   }
 
   return { mode, limit };
+}
+
+/**
+ * Parse process.argv for teams-read subcommand arguments.
+ * Expects: node outlook.js teams-read <name-query> [--limit N]
+ *
+ * @param {string[]} argv - process.argv
+ * @returns {{ query: string, limit: number }}
+ */
+function parseTeamsReadArgs(argv) {
+  const args = argv.slice(3);
+  let query = '';
+  let limit = 50;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--limit' && i + 1 < args.length) {
+      const n = parseInt(args[i + 1], 10);
+      if (!isNaN(n) && n > 0) limit = n;
+      i++;
+    } else if (!args[i].startsWith('--')) {
+      query = query ? query + ' ' + args[i] : args[i];
+    }
+  }
+
+  return { query: query.trim(), limit };
 }
 
 /**
@@ -395,12 +423,126 @@ function parseChatItem(rawText, hasUnread) {
 }
 
 /**
+ * Find the ARIA ref and resolved name of a chat list item matching a query string.
+ * Scans listitem/option elements in the Chat view snapshot.
+ *
+ * @param {string} snapshotText - ARIA snapshot from the Chat view
+ * @param {string} query - Case-insensitive substring to match against the item name
+ * @returns {{ ref: string, name: string } | null}
+ */
+function findChatItemRef(snapshotText, query) {
+  const q = query.toLowerCase();
+  for (const line of snapshotText.split('\n')) {
+    const m = line.match(/^\s*-\s+(listitem|option)\s+"(.+?)"\s*\[([^\]]*)\]/);
+    if (!m) continue;
+    const name = m[2].trim();
+    if (/^(Activity|Chat|Teams|Calendar|Calls|Files|More|Search|Settings)/i.test(name)) continue;
+    if (name.length < 3) continue;
+    if (!name.toLowerCase().includes(q)) continue;
+    const refMatch = m[3].match(/ref=(e\d+)/);
+    if (refMatch) return { ref: '@' + refMatch[1], name };
+  }
+  return null;
+}
+
+/**
+ * Extract individual messages from a Teams conversation panel snapshot.
+ *
+ * Teams conversation ARIA structure (observed live):
+ *   - heading "preview by Sender Name" [level=4, ref=eN]
+ *   - time "Full date string."
+ *     - StaticText "Short time"
+ *   - StaticText "Sender Name"
+ *   - group "..." [ref=eN]
+ *     - button "More message options"
+ *     - paragraph
+ *       - StaticText "Full message content"
+ *
+ * Level-3 headings are day separators ("Monday", "Today") and are skipped.
+ *
+ * @param {string} snapshotText - Raw snapshot from the conversation panel
+ * @returns {Array<{ sender: string, content: string, time: string|null, full_time: string|null }>}
+ */
+function extractMessages(snapshotText) {
+  const lines = snapshotText.split('\n');
+
+  // Pass 1: collect level=4 headings (message headers) with line index
+  const headings = [];
+  // Pass 2: collect time elements with line index
+  const times = [];
+  // Pass 3: collect paragraph > StaticText contents with line index
+  const contents = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Level=4 heading → message header: "PREVIEW by SENDER"
+    const hm = line.match(/-\s+heading\s+"(.+?)"\s+\[level=4/);
+    if (hm) {
+      const bySender = hm[1].match(/\sby\s+([^"]+)$/);
+      if (bySender) {
+        headings.push({ sender: bySender[1].trim(), lineIdx: i });
+      }
+      continue;
+    }
+
+    // time element → short time in next StaticText
+    const tm = line.match(/-\s+time\s+"(.+?)"\s*(?:\[.*)?$/);
+    if (tm) {
+      const fullTime = tm[1].replace(/\.$/, '').trim();
+      if (i + 1 < lines.length) {
+        const stm = lines[i + 1].match(/-\s+StaticText\s+"(.+?)"\s*$/);
+        if (stm) times.push({ fullTime, shortTime: stm[1].trim(), lineIdx: i });
+      }
+      continue;
+    }
+
+    // paragraph → collect ALL StaticTexts within its subtree (handles @mention spans
+    // which Teams renders as nested elements, splitting text across multiple nodes)
+    if (/-\s+paragraph\s*$/.test(line)) {
+      const pIndent = line.search(/\S/);
+      const parts = [];
+      for (let k = i + 1; k < lines.length; k++) {
+        const kl = lines[k];
+        if (!kl.trim()) continue;
+        if (kl.search(/\S/) <= pIndent) break; // back to paragraph level or above
+        const stm = kl.match(/-\s+StaticText\s+"(.+?)"\s*$/);
+        if (stm && stm[1].trim()) parts.push(stm[1].trim());
+      }
+      if (parts.length > 0) contents.push({ content: parts.join(' '), lineIdx: i });
+    }
+  }
+
+  // Zip: for each heading, find the time and content that appear before the next heading
+  const messages = [];
+  for (let h = 0; h < headings.length; h++) {
+    const { sender, lineIdx: hLine } = headings[h];
+    const nextHLine = h + 1 < headings.length ? headings[h + 1].lineIdx : Infinity;
+
+    const t = times.find(x => x.lineIdx > hLine && x.lineIdx < nextHLine);
+    const c = contents.find(x => x.lineIdx > hLine && x.lineIdx < nextHLine);
+
+    if (!c && !t) continue; // skip headings with no associated content or time
+    messages.push({
+      sender,
+      content: c ? c.content : '',
+      time: t ? t.shortTime : null,
+      full_time: t ? t.fullTime : null,
+    });
+  }
+
+  log(`teams: extractMessages found ${messages.length} messages`);
+  return messages;
+}
+
+/**
  * Main teams subcommand handler.
  *
  * Modes:
  *   activity (default) — Activity feed notifications
  *   mentions — Filtered to @mentions only
- *   unread — Unread chats
+ *   unread — Unread chats only
+ *   chats — All recent chats (read + unread)
  */
 function runTeams() {
   const { mode, limit } = parseArgs(process.argv);
@@ -419,26 +561,28 @@ function runTeams() {
 
   let snapshotText = initial.snapshotText;
 
-  if (mode === 'unread') {
-    // Navigate to Chat view for unread chats
+  if (mode === 'chats' || mode === 'unread') {
+    // Navigate to Chat view
     const chatResult = navigateToChat(snapshotText);
     if (chatResult && chatResult.snapshotText) {
       snapshotText = chatResult.snapshotText;
     }
 
-    const chatItems = extractChatItems(snapshotText);
-    const unreadOnly = chatItems.filter(c => c.has_unread);
-    const results = unreadOnly.slice(0, limit).map(item => parseChatItem(item.raw_text, item.has_unread));
+    let chatItems = extractChatItems(snapshotText);
+    if (mode === 'unread') {
+      chatItems = chatItems.filter(c => c.has_unread);
+    }
+    const results = chatItems.slice(0, limit).map(item => parseChatItem(item.raw_text, item.has_unread));
 
     process.stdout.write(JSON.stringify({
       operation: 'teams',
       status: 'ok',
-      mode: 'unread',
+      mode,
       results,
       count: results.length,
       error: null,
     }) + '\n');
-    log(`teams: returning ${results.length} unread chats`);
+    log(`teams: returning ${results.length} ${mode} chats`);
     return;
   }
 
@@ -470,4 +614,85 @@ function runTeams() {
   log(`teams: returning ${results.length} ${mode} items`);
 }
 
-module.exports = { runTeams, parseArgs, findNavRef, extractActivityItems, extractChatItems, parseActivityItem, parseChatItem };
+/**
+ * teams-read subcommand handler.
+ * Opens a specific chat conversation and returns its recent messages.
+ *
+ * Usage: node outlook.js teams-read <name-query> [--limit N]
+ */
+function runTeamsRead() {
+  const { query, limit } = parseTeamsReadArgs(process.argv);
+  log(`teams-read: query="${query}" limit=${limit}`);
+
+  if (!query) {
+    outputError('teams-read', 'INVALID_ARGS', 'Usage: node outlook.js teams-read <name> [--limit N]');
+    return;
+  }
+
+  // Step 1: Open Teams
+  const initial = fetchActivityFeed();
+  if (!initial) {
+    outputError('teams-read', 'OPERATION_FAILED', 'Teams batch failed — browser error or timeout');
+    return;
+  }
+  if (initial._loginRequired) {
+    outputError('teams-read', 'SESSION_INVALID', 'Teams session expired — run: node outlook.js auth (ensure Teams SSO is active in your browser profile)');
+    return;
+  }
+
+  let snapshotText = initial.snapshotText;
+
+  // Step 2: Navigate to Chat view to see the conversation list
+  const chatResult = navigateToChat(snapshotText);
+  if (chatResult && chatResult.snapshotText) {
+    snapshotText = chatResult.snapshotText;
+  }
+
+  // Step 3: Find the chat matching the query
+  const chatMatch = findChatItemRef(snapshotText, query);
+  if (!chatMatch) {
+    outputError('teams-read', 'NOT_FOUND', `No chat found matching "${query}" — use "node outlook.js teams --chats" to list available conversations`);
+    return;
+  }
+  log(`teams-read: opening chat "${chatMatch.name}" ref ${chatMatch.ref}`);
+
+  // Step 4: Click the chat and snapshot the conversation
+  const convResult = runBatch([
+    ['click', chatMatch.ref],
+    ['wait', '4000'],
+    ['snapshot'],
+  ], POLICY);
+
+  if (convResult.status !== 0) {
+    outputError('teams-read', 'OPERATION_FAILED', `Failed to open conversation with "${chatMatch.name}"`);
+    return;
+  }
+
+  const convSnapshot = stripContentBoundaries(convResult.stdout);
+  if (!convSnapshot.trim()) {
+    outputError('teams-read', 'OPERATION_FAILED', 'Empty conversation snapshot');
+    return;
+  }
+
+  // Step 5: Extract and return messages (most recent N)
+  const allMessages = extractMessages(convSnapshot);
+  const results = allMessages.slice(-limit);
+
+  process.stdout.write(JSON.stringify({
+    operation: 'teams-read',
+    status: 'ok',
+    chat_name: chatMatch.name,
+    results,
+    count: results.length,
+    error: null,
+  }) + '\n');
+  log(`teams-read: returning ${results.length} messages from "${chatMatch.name}"`);
+}
+
+module.exports = {
+  runTeams, runTeamsRead,
+  parseArgs, parseTeamsReadArgs,
+  findNavRef, findChatItemRef,
+  extractActivityItems, extractChatItems, extractMessages,
+  parseActivityItem, parseChatItem,
+};

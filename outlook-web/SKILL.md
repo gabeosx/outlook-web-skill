@@ -356,12 +356,13 @@ Searches calendar events using the Outlook search combobox, navigating to the ca
 ### teams
 
 ```bash
-node outlook.js teams [--mentions] [--unread] [--limit <n>]
+node outlook.js teams [--mentions] [--unread] [--chats] [--limit <n>]
 ```
 
-- **Default** — activity feed (all notifications)
+- **Default** — activity feed (all recent notifications)
 - **`--mentions`** — @mentions only
-- **`--unread`** — unread chat summary
+- **`--unread`** — unread chats only (filter; use `--chats` to see all)
+- **`--chats`** — all recent chats regardless of read state
 
 Uses the same Entra SSO session as Outlook. Set `TEAMS_BASE_URL` in `.env` for custom Teams URLs.
 
@@ -371,6 +372,7 @@ Uses the same Entra SSO session as Outlook. Set `TEAMS_BASE_URL` in `.env` for c
 {
   "operation": "teams",
   "status": "ok",
+  "mode": "activity",
   "results": [
     {
       "sender": "User, Alpha",
@@ -387,24 +389,79 @@ Uses the same Entra SSO session as Outlook. Set `TEAMS_BASE_URL` in `.env` for c
 
 `type` values: `mention`, `reply`, `reaction`, `message`, `notification`
 
-**Response (`--unread` mode):**
+**Response (`--chats` / `--unread` mode):**
 
 ```json
 {
   "operation": "teams",
   "status": "ok",
+  "mode": "chats",
   "results": [
     {
       "name": "User, Alpha",
       "preview": "Can we sync at 2pm?",
       "time": "9:15 AM",
-      "has_unread": true
+      "has_unread": false
     }
   ],
   "count": 1,
   "error": null
 }
 ```
+
+---
+
+### teams-read
+
+Read the recent messages from a specific chat conversation.
+
+```bash
+node outlook.js teams-read <name-query> [--limit <n>]
+```
+
+- **`<name-query>`** — Partial name of the person or group chat to open (case-insensitive substring match against the chat list). Use `teams --chats` first to see available conversation names.
+- **`--limit`** — Maximum number of messages to return, most recent first (default: 50)
+
+**Typical workflow:**
+
+```bash
+# 1. Discover available chats
+node outlook.js teams --chats | jq '.results[].name'
+
+# 2. Read a specific conversation
+node outlook.js teams-read "Alpha" --limit 20
+```
+
+**Response:**
+
+```json
+{
+  "operation": "teams-read",
+  "status": "ok",
+  "chat_name": "User, Alpha — hey are you free? — 10:30 AM",
+  "results": [
+    {
+      "sender": "User, Alpha",
+      "content": "Hey, do you have a moment to chat?",
+      "time": "Monday 9:15 AM",
+      "full_time": "Monday, July 14, 2026 9:15 AM"
+    },
+    {
+      "sender": "User, Beta",
+      "content": "Sure, give me 5 minutes",
+      "time": "Monday 9:18 AM",
+      "full_time": "Monday, July 14, 2026 9:18 AM"
+    }
+  ],
+  "count": 2,
+  "error": null
+}
+```
+
+**Notes:**
+- Only conversations visible in the current Chat list view are searchable. If a conversation is not found, scroll Teams manually to load older chats, then retry.
+- `sender` is the display name of the person who sent each message. Compare against your own name (visible in `teams --chats` results or the Teams profile) to identify messages you sent.
+- Messages with only attachments or images may have an empty `content` field.
 
 ---
 
