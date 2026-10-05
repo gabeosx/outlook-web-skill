@@ -12,6 +12,8 @@
     "state",
     "session",
     "click",
+    "press",
+    "key",
     "eval",
     "evaluate",
     "getbytext",
