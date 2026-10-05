@@ -152,91 +152,74 @@ function findNavRef(snapshotText, label) {
 }
 
 /**
- * Click the Activity button in Teams left rail, wait, and re-snapshot.
- * Teams may land on Chat or another view by default.
+ * Navigate to a Teams left-rail view (Activity or Chat).
  *
- * Uses the @eN ref from the already-captured snapshot to click — avoids all
- * DOM selector guessing and policy caching issues (click is in every policy file).
+ * teams.cloud.microsoft keeps a `#loading-screen` overlay mounted over the nav rail
+ * well after the page looks interactive, which intercepts mouse clicks on the nav
+ * buttons ("Element covered by <div#loading-screen>"). The left-rail buttons expose
+ * keyboard shortcuts in their accessible name (e.g. "Activity (⌃ ⇧ 1)"), and key
+ * events aren't blocked by that overlay the way click hit-testing is — so we send
+ * the shortcut first and only fall back to clicking the @eN ref if that fails.
  *
- * @param {string} currentSnapshotText - snapshot from fetchActivityFeed (used to find ref)
+ * @param {string} currentSnapshotText - snapshot used to find a click-fallback ref
+ * @param {string} navLabel - left-rail button label, e.g. 'Activity' or 'Chat'
+ * @param {string} shortcut - key combo for agent-browser `press`, e.g. 'Control+Shift+1'
  * @returns {{ snapshotText: string } | null}
  */
-function navigateToActivity(currentSnapshotText) {
-  const ref = findNavRef(currentSnapshotText, 'Activity');
-  if (!ref) {
-    log('teams: Activity button ref not found in snapshot — cannot navigate');
-    return null;
-  }
-  log(`teams: clicking Activity by ref ${ref}`);
+function navigateToView(currentSnapshotText, navLabel, shortcut) {
+  log(`teams: navigating to ${navLabel} via keyboard shortcut (${shortcut})`);
 
   let result = runBatch([
-    ['click', ref],
-    ['wait', '5000'],
+    ['wait', '1000'],
+    ['press', shortcut],
+    ['wait', '2500'],
     ['snapshot'],
   ], POLICY);
 
-  // If click was blocked (e.g. loading screen still covering button), wait for
-  // Teams to settle, re-snapshot for fresh refs, and retry once.
-  if (result.status !== 0) {
-    log('teams: activity click blocked — waiting 8 s for loading screen to clear, then retrying');
-    const refreshResult = runBatch([
-      ['wait', '8000'],
-      ['snapshot'],
-    ], POLICY);
-    if (refreshResult.status !== 0) return null;
-    const refreshed = stripContentBoundaries(refreshResult.stdout);
-    if (!refreshed.trim()) return null;
+  let cleaned = result.status === 0 ? stripContentBoundaries(result.stdout) : '';
 
-    const retryRef = findNavRef(refreshed, 'Activity');
-    if (!retryRef) return null;
-    log(`teams: retrying Activity click with ref ${retryRef}`);
-
-    result = runBatch([
-      ['click', retryRef],
-      ['wait', '5000'],
-      ['snapshot'],
-    ], POLICY);
-    if (result.status !== 0) {
-      log('teams: activity navigation retry also failed');
+  if (result.status !== 0 || !cleaned.trim()) {
+    log(`teams: ${navLabel} keyboard shortcut failed, falling back to click`);
+    const ref = findNavRef(currentSnapshotText, navLabel);
+    if (!ref) {
+      log(`teams: ${navLabel} button ref not found in snapshot — cannot navigate`);
       return null;
     }
+
+    result = runBatch([
+      ['wait', '2000'],
+      ['click', ref],
+      ['wait', '3000'],
+      ['snapshot'],
+    ], POLICY);
+
+    if (result.status !== 0) {
+      log(`teams: ${navLabel} click navigation failed, retrying after longer wait`);
+      result = runBatch([
+        ['wait', '5000'],
+        ['click', ref],
+        ['wait', '3000'],
+        ['snapshot'],
+      ], POLICY);
+    }
+
+    cleaned = result.status === 0 ? stripContentBoundaries(result.stdout) : '';
   }
 
-  const cleaned = stripContentBoundaries(result.stdout);
-  if (!cleaned.trim()) return null;
+  if (!cleaned.trim()) {
+    log(`teams: ${navLabel} navigation failed (keyboard + click fallback both failed)`);
+    return null;
+  }
 
   return { snapshotText: cleaned };
 }
 
-/**
- * Click the Chat button in Teams left rail, wait, and snapshot for unread chats.
- *
- * @param {string} currentSnapshotText - snapshot from fetchActivityFeed (used to find ref)
- * @returns {{ snapshotText: string } | null}
- */
+function navigateToActivity(currentSnapshotText) {
+  return navigateToView(currentSnapshotText, 'Activity', 'Control+Shift+1');
+}
+
 function navigateToChat(currentSnapshotText) {
-  const ref = findNavRef(currentSnapshotText, 'Chat');
-  if (!ref) {
-    log('teams: Chat button ref not found in snapshot — cannot navigate');
-    return null;
-  }
-  log(`teams: clicking Chat by ref ${ref}`);
-
-  const result = runBatch([
-    ['click', ref],
-    ['wait', '5000'],
-    ['snapshot'],
-  ], POLICY);
-
-  if (result.status !== 0) {
-    log('teams: chat navigation batch failed');
-    return null;
-  }
-
-  const cleaned = stripContentBoundaries(result.stdout);
-  if (!cleaned.trim()) return null;
-
-  return { snapshotText: cleaned };
+  return navigateToView(currentSnapshotText, 'Chat', 'Control+Shift+2');
 }
 
 /**
